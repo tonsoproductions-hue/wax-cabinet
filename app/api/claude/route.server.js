@@ -1,7 +1,7 @@
 import { identifyCover, configuredModels, retryModels } from '@/lib/vision'
 import { supabaseForRequest, signInRequired } from '@/lib/supabase-server'
 
-// Each scan costs a fraction of a cent (Haiku ~$0.001, Sonnet ~$0.004), but
+// Each scan costs a fraction of a cent (Haiku 5.5 ~$0.0001, Sonnet ~$0.003), but
 // cap scans per user per day so one account can't run up the bill.
 const DAILY_LIMIT = Number(process.env.IDENTIFY_DAILY_LIMIT) || 40
 // The app resizes covers to 800px JPEGs (~150 KB); anything far bigger is a mistake or abuse.

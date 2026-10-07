@@ -41,8 +41,8 @@ API files are named `route.server.js`; the iOS build leaves them out (see
 - **Per-user data, enforced by the database.** Every record and cover photo
   belongs to its owner via row-level security; collections can be public
   (share links) or private.
-- **Cost controls.** Cover scans try Claude Haiku 4.5 first (~$0.001) and
-  escalate to Sonnet 5.5 (~$0.004) only when needed; 40 scans per user per day;
+- **Cost controls.** Cover scans try Claude Haiku 5.5 first (~$0.0001) and
+  escalate to Sonnet 5.5 (~$0.003) only when needed; 40 scans per user per day;
   every scan's model and cost is logged in `identify_events`.
 - **Capacity controls.** Discogs responses are cached on Vercel's CDN (its
   limit is 60 requests a minute shared by everyone); uploads are resized to
@@ -89,7 +89,7 @@ Project → Settings → Environment Variables (Production), using `.env.example
 | Variable | Value |
 |---|---|
 | `SUPABASE_SERVICE_ROLE_KEY` | from Supabase step 7 |
-| `VISION_MODELS` | `claude-haiku-4-5,claude-sonnet-5-5` |
+| `VISION_MODELS` | `claude-haiku-5-5,claude-sonnet-5-5` |
 | `IDENTIFY_DAILY_LIMIT` | `40` |
 | `NEXT_PUBLIC_SITE_URL` | `https://wax-cabinet.vercel.app` (or your domain) |
 | `NEXT_PUBLIC_FEATURED_OWNER` | your user id (Supabase → Authentication → Users), so the website still opens on your crate |
@@ -172,10 +172,10 @@ Then redeploy. Also:
 |---|---|---|
 | Supabase Pro | $25 | 8 GB database, 100 GB storage, backups |
 | Vercel | $0–20 | Pro if commercial |
-| Claude scans | ~$15–40 | ~15k scans/month at $0.001–0.004 each |
+| Claude scans | ~$2–10 | ~15k scans/month at ~$0.0001 (Haiku 5.5), ~$0.003 when escalated |
 | Resend email | $0 | free tier: 3,000 emails a month |
 | Apple Developer | ~$8 | $99 a year |
-| **Total** | **~$50–95/month** | |
+| **Total** | **~$35–65/month** | |
 
 ### Capacity limits and when to act
 
@@ -196,7 +196,7 @@ Then redeploy. Also:
          count(*) as scans,
          count(distinct user_id) as users,
          round(sum(cost_usd), 2) as cost_usd,
-         count(*) filter (where model = 'claude-haiku-4-5') as answered_by_haiku
+         count(*) filter (where model = 'claude-haiku-5-5') as answered_by_haiku
   from identify_events
   where created_at > now() - interval '30 days'
   group by 1 order by 1 desc;
