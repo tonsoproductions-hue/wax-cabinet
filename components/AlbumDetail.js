@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { CoverArt, Spinner } from '@/components/ui'
+import { apiUrl } from '@/lib/supabase'
 
 export default function AlbumDetail({ album, onDelete }) {
   const [fetched, setFetched] = useState(null)
@@ -9,7 +10,7 @@ export default function AlbumDetail({ album, onDelete }) {
   useEffect(() => {
     if (!needsTracks) return
     let cancelled = false
-    fetch(`/api/discogs?id=${album.discogs_id}`)
+    fetch(apiUrl(`/api/discogs?id=${album.discogs_id}`))
       .then(r => r.json())
       .then(d => { if (!cancelled) setFetched({ id: album.id, tracks: d.tracklist ?? [] }) })
       .catch(() => { if (!cancelled) setFetched({ id: album.id, tracks: [] }) })

@@ -1,6 +1,7 @@
 'use client'
 import { useRef } from 'react'
 import { CoverArt } from '@/components/ui'
+import { isNative, hapticTick } from '@/lib/native'
 
 export const NANO_COLORS = {
   silver: '#d4d6d8',
@@ -15,6 +16,11 @@ const STEP_DEGREES = 22
 
 let audio
 function click() {
+  // In the iOS app, a haptic tick under the finger; on the web, a tiny click sound.
+  if (isNative()) {
+    hapticTick()
+    return
+  }
   try {
     audio ??= new (window.AudioContext || window.webkitAudioContext)()
     const osc = audio.createOscillator()

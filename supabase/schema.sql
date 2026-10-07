@@ -1,4 +1,4 @@
--- Wax Cabinet database setup for a fresh Supabase project. Paste into the SQL editor.
+-- Vinyl Crate database setup for a fresh Supabase project. Paste into the SQL editor.
 -- (An existing project from before sign-in should run migrations/002_owner_sign_in.sql instead.)
 
 create table if not exists public.vinyl_records (

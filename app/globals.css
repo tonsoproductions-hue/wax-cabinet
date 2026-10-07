@@ -729,3 +729,73 @@ button.cell { padding-top: 6px; padding-bottom: 6px; }
 @media (prefers-reduced-motion: reduce) {
   .push-in, .alert, .alert-backdrop, .cf-item { animation: none; transition: none; }
 }
+
+/* ── iOS 4-style ON/OFF switch ───────────────────────────────── */
+
+.ios-switch {
+  position: relative; flex: 0 0 auto;
+  width: 94px; height: 27px; padding: 0;
+  border: 1px solid #919191; border-radius: 5px;
+  overflow: hidden; background: #eee;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.25);
+}
+.ios-switch:disabled { opacity: .6; }
+.ios-switch-track {
+  position: absolute; top: 0; bottom: 0; left: -46px; width: 140px;
+  display: flex; transition: left .2s ease;
+}
+.ios-switch.on .ios-switch-track { left: 0; }
+.ios-switch-track span {
+  width: 70px; display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: bold;
+}
+.ios-switch-track span:first-child {
+  background: linear-gradient(#1d63d8, #4f93f3); color: #fff; text-shadow: 0 -1px 0 rgba(0,0,0,.35); padding-right: 22px;
+}
+.ios-switch-track span:last-child {
+  background: linear-gradient(#e2e2e2, #fdfdfd); color: #7f7f7f; padding-left: 22px;
+}
+.ios-switch-knob {
+  position: absolute; top: -1px; left: -1px; width: 44px; height: 27px;
+  border: 1px solid #919191; border-radius: 5px;
+  background: linear-gradient(#cfcfcf, #fdfdfd);
+  box-shadow: 0 1px 2px rgba(0,0,0,.2);
+  transition: left .2s ease;
+}
+.ios-switch.on .ios-switch-knob { left: 49px; }
+
+a.cell { text-decoration: none; color: #000; }
+a.cell:active { background: var(--ios-gloss-blue); color: #fff; }
+
+/* ── Running inside the iOS app (Capacitor adds .native to <html>) ── */
+
+/* The real status bar replaces the drawn one; pad for the notch and the
+   home indicator. */
+.native .status-bar { display: none; }
+.native .screen { padding-top: env(safe-area-inset-top); background: #000; }
+.native .tab-bar { height: calc(49px + env(safe-area-inset-bottom)); padding-bottom: calc(2px + env(safe-area-inset-bottom)); }
+.native .alert-backdrop { top: calc(-1 * env(safe-area-inset-top)); }
+.native body { background: #000; }
+@media (min-width: 640px) {
+  /* iPad in the app: fill the screen rather than drawing an iPhone. */
+  .native body { padding: 0; align-items: stretch; }
+  .native .device { width: 100%; height: 100dvh; border-radius: 0; padding: 0; box-shadow: none; background: #000; }
+  .native .device-top, .native .device-bottom { display: none; }
+  .native .screen { border: none; border-radius: 0; }
+}
+
+/* ── Privacy / Support pages ─────────────────────────────────── */
+
+.info-page { width: 100%; min-height: 100dvh; background: var(--pinstripes); display: flex; justify-content: center; padding: 24px 16px 48px; }
+.info-page article {
+  width: 100%; max-width: 680px; align-self: flex-start;
+  background: #fff; border: 1px solid var(--group-border); border-radius: 10px;
+  padding: 24px 22px; line-height: 1.5; font-size: 16px; color: #222;
+}
+.info-page h1 { font-size: 26px; margin: 0 0 4px; }
+.info-page h2 { font-size: 18px; margin: 26px 0 8px; color: var(--label-blue); }
+.info-page h3 { font-size: 16px; margin: 16px 0 4px; }
+.info-page .updated { color: #7f7f7f; font-size: 14px; margin-top: 0; }
+.info-page a { color: var(--value-blue); }
+.info-page ul, .info-page ol { padding-left: 22px; }
+.info-page li { margin: 6px 0; }

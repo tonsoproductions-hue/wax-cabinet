@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#000000",
+  // Let the app draw under the notch; globals.css pads with safe-area insets.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

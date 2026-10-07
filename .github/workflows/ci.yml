@@ -1,0 +1,37 @@
+name: CI
+
+# Lint and build both targets on every push and pull request, so a change
+# that breaks the website or the iOS bundle is caught before Vercel deploys
+# it or it reaches an App Store build.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    env:
+      # Placeholders: the build only needs well-formed values, not real keys.
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - name: Build website and API
+        run: npm run build
+      - name: Build iOS static bundle
+        run: npx next build
+        env:
+          BUILD_TARGET: ios
+          NEXT_PUBLIC_API_BASE: https://wax-cabinet.vercel.app
+          NEXT_PUBLIC_SITE_URL: https://wax-cabinet.vercel.app
+      - name: Check the iOS bundle has no server code
+        run: |
+          test -f out/index.html
+          ! grep -rl "SUPABASE_SERVICE_ROLE_KEY\|ANTHROPIC_API_KEY" out

@@ -1,15 +1,25 @@
 {
-  "name": "wax-cabinet",
+  "name": "vinyl-crate",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:ios": "scripts/build-ios.sh",
+    "ios:open": "cap open ios"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.4",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "@supabase/supabase-js": "^2.100.1",
     "next": "^16.4.0",
     "react": "^19.3.0",
@@ -17,6 +27,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

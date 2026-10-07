@@ -9,6 +9,11 @@ export async function POST(request) {
   if (!file || typeof file === 'string' || !file.type.startsWith('image/')) {
     return Response.json({ error: 'Expected an image file' }, { status: 400 })
   }
+  // The app uploads its 800px resize (~150 KB). Storage is the main cost as
+  // users grow, so refuse originals straight off a phone camera.
+  if (file.size > 2 * 1024 * 1024) {
+    return Response.json({ error: 'Cover photos must be under 2 MB' }, { status: 413 })
+  }
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const safeName = file.name.replace(/[^\w.-]+/g, '_')

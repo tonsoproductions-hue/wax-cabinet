@@ -1,6 +1,6 @@
 'use client'
-import { useRef, useState } from 'react'
-import { supabase, authHeaders } from '@/lib/supabase'
+import { useState } from 'react'
+import { supabase, authHeaders, apiUrl } from '@/lib/supabase'
 import { GENRES, CONDITIONS } from '@/lib/genres'
 import { Chevron, Spinner } from '@/components/ui'
 
@@ -18,11 +18,6 @@ const TEXT_FIELDS = [
   ['Discogs ID', 'discogs_id', 'numeric'],
 ]
 
-// The server gives up on Claude within ~35s and on Discogs within 10s; these
-// are the app's own backstops.
-const CLAUDE_TIMEOUT_MS = 45_000
-const DISCOGS_TIMEOUT_MS = 15_000
-
 export default function ImportScreen({ user, onAdded, ask }) {
   const [imageData, setImageData] = useState(null)
   const [imageFile, setImageFile] = useState(null)
@@ -36,27 +31,13 @@ export default function ImportScreen({ user, onAdded, ask }) {
   const [dragging, setDragging] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [identifiedBy, setIdentifiedBy] = useState(null)
-  // Fixing a wrong match: answers the owner rejected, their hint for Claude,
-  // and a free-text Discogs search.
-  const [rejected, setRejected] = useState([])
-  const [hint, setHint] = useState('')
-  const [discogsQuery, setDiscogsQuery] = useState('')
-  // Text search instead of a photo: what's typed in the box, the search
-  // being identified, and the cover of the chosen pressing (used as the
-  // record's artwork when there's no photo).
-  const [searchText, setSearchText] = useState('')
-  const [textQuery, setTextQuery] = useState('')
-  const [discogsCover, setDiscogsCover] = useState(null)
-  const started = !!(imageData || textQuery)
 
   function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) return
-    setImageFile(file)
-    setTextQuery('')
-    setDiscogsCover(null)
     const reader = new FileReader()
     reader.onload = (e) => {
-      // Resize before sending to the vision model
+      // Resize before sending to the vision model, and upload the resize rather
+      // than the original (phone photos are several MB; storage is the main cost).
       const img = new Image()
       img.onload = async () => {
         const canvas = document.createElement('canvas')
@@ -71,40 +52,18 @@ export default function ImportScreen({ user, onAdded, ask }) {
         canvas.height = h
         canvas.getContext('2d').drawImage(img, 0, 0, w, h)
         const resized = canvas.toDataURL('image/jpeg', 0.85)
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+        setImageFile(new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }))
         setImageData(resized)
         setProgress(10)
         setDiscogsResults([])
         setSelectedDiscogs(null)
         setTracklist([])
-        setRejected([])
-        setHint('')
-        setDiscogsQuery('')
-        await identify({ base64: resized.split(',')[1], mediaType: 'image/jpeg' })
+        await analyzeImage(resized.split(',')[1], 'image/jpeg')
       }
       img.src = e.target.result
     }
     reader.readAsDataURL(file)
-  }
-
-  // One request at a time: a new scan or search, or Start Over, cancels the
-  // previous one, and late answers from a cancelled request are ignored. Each
-  // request also gives up after a time limit so the screen can never hang.
-  const active = useRef(null)
-
-  function startRequest(ms) {
-    active.current?.controller.abort()
-    const req = { controller: new AbortController(), timedOut: false }
-    req.timer = setTimeout(() => { req.timedOut = true; req.controller.abort() }, ms)
-    active.current = req
-    return req
-  }
-  const endRequest = req => clearTimeout(req.timer)
-  const isStale = req => active.current !== req
-  function cancelRequest() {
-    if (!active.current) return
-    endRequest(active.current)
-    active.current.controller.abort()
-    active.current = null
   }
 
   function finishProcessing(status) {
@@ -113,146 +72,65 @@ export default function ImportScreen({ user, onAdded, ask }) {
     setProcStatus(status)
   }
 
-  // What Claude identifies from: the photo, or the words typed in the search box.
-  const currentSource = () => (imageData
-    ? { base64: imageData.split(',')[1], mediaType: 'image/jpeg' }
-    : { text: textQuery })
-
-  // source: { base64, mediaType } for a photo or { text } for a typed search.
-  // retry: the owner says the last answer was wrong (or added a hint), so the
-  // server skips to a stronger model and avoids the rejected answers.
-  async function identify(source, { retry = false, hint: withHint, rejected: skip } = {}) {
-    const isText = !!source.text
-    const req = startRequest(CLAUDE_TIMEOUT_MS)
+  async function analyzeImage(base64, mediaType) {
     setProcessing(true)
-    setProcStatus(isText
-      ? (retry ? 'Claude is thinking of another match…' : 'Claude is working out which record that is…')
-      : (retry ? 'Claude is taking a closer look…' : 'Claude is reading the cover…'))
+    setProcStatus('Claude is reading the cover…')
     setProgress(25)
     try {
-      const resp = await fetch('/api/claude', {
+      const resp = await fetch(apiUrl('/api/claude'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-        body: JSON.stringify({ ...source, retry, hint: withHint || undefined, rejected: skip?.length ? skip : undefined }),
-        signal: req.controller.signal,
+        body: JSON.stringify({ base64, mediaType })
       })
-      const { error, identifiedBy: model, repeated, ...album } = await resp.json()
-      endRequest(req)
-      if (isStale(req)) return
-      if (error) throw new Error(error)
+      const { error, album, identifiedBy: model } = await resp.json()
+      if (error) {
+        // Server messages (daily limit, photo too large) are written for people.
+        finishProcessing(resp.status === 429 || resp.status === 413 ? error : 'Couldn’t identify it. Fill in the details below.')
+        return
+      }
       setIdentifiedBy(model ?? null)
-      if (!album.artist && !album.title) {
-        finishProcessing(isText
-          ? 'Couldn’t work out that record. Try other words or search Discogs below.'
-          : retry ? 'Still couldn’t read it. Try a hint or search Discogs below.' : 'Couldn’t read the cover. Fill in the details below.')
+      if (!album) {
+        finishProcessing('Couldn’t read the cover. Fill in the details below.')
         return
       }
-      if (repeated) {
-        finishProcessing(`Claude still thinks this is ${album.title}. Add a hint or search Discogs below.`)
-        return
-      }
-      // A new answer replaces the old pick, so drop its Discogs id, price and tracks.
-      setForm(f => ({ ...f, ...album, discogs_id: '', market_value: '' }))
-      setSelectedDiscogs(null)
-      setDiscogsCover(null)
-      setTracklist([])
-      const query = `${album.artist} ${album.title}`.trim()
-      setDiscogsQuery(query)
+      setForm(f => ({ ...f, ...album }))
       setProgress(55)
-      await searchDiscogs(query)
+      await searchDiscogs(`${album.artist} ${album.title}`)
     } catch (err) {
-      endRequest(req)
-      if (isStale(req)) return
-      console.error('identify failed:', err)
-      finishProcessing(req.timedOut
-        ? 'Claude took too long. Try again or search Discogs below.'
-        : 'Couldn’t identify it. Fill in the details below.')
+      console.error('analyzeImage failed:', err)
+      finishProcessing('Couldn’t identify it. Fill in the details below.')
     }
   }
 
-  function askAgain() {
-    const guess = [form.artist, form.title].filter(Boolean).join(' — ')
-    const next = guess && !rejected.includes(guess) ? [...rejected, guess] : rejected
-    setRejected(next)
-    identify(currentSource(), { retry: true, hint: hint.trim(), rejected: next })
-  }
-
-  function askWithHint(e) {
-    e.preventDefault()
-    if (!hint.trim()) return
-    identify(currentSource(), { retry: true, hint: hint.trim(), rejected })
-  }
-
-  // Look a record up by name or description instead of a photo.
-  function searchByText(e) {
-    e.preventDefault()
-    const q = searchText.trim()
-    if (!q) return
-    setImageData(null)
-    setImageFile(null)
-    setTextQuery(q)
-    setDiscogsResults([])
-    setSelectedDiscogs(null)
-    setDiscogsCover(null)
-    setTracklist([])
-    setRejected([])
-    setHint('')
-    setDiscogsQuery('')
-    setIdentifiedBy(null)
-    setForm(EMPTY_FORM)
-    setProgress(10)
-    identify({ text: q })
-  }
-
-  function searchDiscogsYourself(e) {
-    e.preventDefault()
-    if (!discogsQuery.trim()) return
-    setSelectedDiscogs(null)
-    searchDiscogs(discogsQuery.trim())
-  }
-
   async function searchDiscogs(q) {
-    const req = startRequest(DISCOGS_TIMEOUT_MS)
     setProcessing(true)
     setProcStatus('Searching Discogs…')
     try {
-      const resp = await fetch(`/api/discogs?q=${encodeURIComponent(q)}`, { signal: req.controller.signal })
+      const resp = await fetch(apiUrl(`/api/discogs?q=${encodeURIComponent(q)}`))
       const data = await resp.json()
-      endRequest(req)
-      if (isStale(req)) return
       if (data.error) throw new Error(data.error)
       const results = data.results?.slice(0, 4) || []
       setDiscogsResults(results)
       finishProcessing(results.length > 0 ? 'Choose your pressing below.' : 'No Discogs matches. Fill in the details below.')
     } catch (err) {
-      endRequest(req)
-      if (isStale(req)) return
       console.error('searchDiscogs failed:', err)
       setDiscogsResults([])
-      finishProcessing(req.timedOut
-        ? 'Discogs took too long. Try the search again or fill in the details below.'
-        : 'Discogs search failed. Fill in the details below.')
+      finishProcessing('Discogs search failed. Fill in the details below.')
     }
   }
 
   async function pickDiscogs(result) {
     setSelectedDiscogs(result.id)
-    setDiscogsCover(result.cover_image || result.thumb || null)
     setForm(f => ({ ...f, discogs_id: String(result.id) }))
     setProcStatus('Loading release details…')
-    const req = startRequest(DISCOGS_TIMEOUT_MS)
     let d
     try {
-      const resp = await fetch(`/api/discogs?id=${result.id}`, { signal: req.controller.signal })
+      const resp = await fetch(apiUrl(`/api/discogs?id=${result.id}`))
       d = await resp.json()
-      endRequest(req)
-      if (isStale(req)) return
       if (d.error) throw new Error(d.error)
     } catch (err) {
-      endRequest(req)
-      if (isStale(req)) return
       console.error('pickDiscogs failed:', err)
-      setProcStatus(req.timedOut ? 'Discogs took too long. Tap the pressing to try again.' : 'Couldn’t load release details.')
+      setProcStatus('Couldn’t load release details.')
       return
     }
     setForm(f => ({
@@ -269,7 +147,6 @@ export default function ImportScreen({ user, onAdded, ask }) {
   }
 
   function resetImport() {
-    cancelRequest()
     setImageData(null)
     setImageFile(null)
     setDiscogsResults([])
@@ -279,24 +156,17 @@ export default function ImportScreen({ user, onAdded, ask }) {
     setProgress(0)
     setProcStatus('')
     setIdentifiedBy(null)
-    setRejected([])
-    setHint('')
-    setDiscogsQuery('')
-    setSearchText('')
-    setTextQuery('')
-    setDiscogsCover(null)
     setForm(EMPTY_FORM)
   }
 
   async function addRecord() {
     setSaving(true)
     try {
-      // A photo is uploaded; a text search uses the chosen pressing's Discogs cover.
-      let image_url = imageFile ? null : discogsCover
+      let image_url = null
       if (imageFile) {
         const fd = new FormData()
         fd.append('file', imageFile)
-        const up = await fetch('/api/upload', { method: 'POST', body: fd, headers: await authHeaders() })
+        const up = await fetch(apiUrl('/api/upload'), { method: 'POST', body: fd, headers: await authHeaders() })
         const upData = await up.json()
         if (upData.error) throw new Error(`Cover upload failed: ${upData.error}`)
         image_url = upData.url
@@ -347,27 +217,17 @@ export default function ImportScreen({ user, onAdded, ask }) {
           </span>
           <Chevron />
         </label>
-        <form className="cell field compose" onSubmit={searchByText}>
-          <span className="field-label">Name</span>
-          <input type="search" value={searchText} onChange={e => setSearchText(e.target.value)} maxLength={300} enterKeyHint="search" placeholder="Artist, album or a description" />
-          <button className="cell-btn" type="submit" disabled={!searchText.trim()}>Find</button>
-        </form>
       </div>
-      <div className="group-footer">Claude reads the cover or what you type, then Discogs finds the pressing.</div>
+      <div className="group-footer">Claude reads the cover, then Discogs finds the pressing.</div>
 
-      {started && (
+      {imageData && (
         <>
           <div className="group">
             <div className="cell proc-cell">
-              {imageData
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={imageData} className="thumb" alt="" />
-                : <span className="thumb search-thumb" aria-hidden="true">
-                    <svg viewBox="0 0 14 14"><circle cx="5.5" cy="5.5" r="4.2" fill="none" stroke="#7f7f7f" strokeWidth="1.6" /><path d="M8.6 8.6L13 13" stroke="#7f7f7f" strokeWidth="1.8" strokeLinecap="round" /></svg>
-                  </span>}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageData} className="thumb" alt="" />
               <div className="grow">
                 {processing ? 'Identifying…' : 'Identified'}
-                {textQuery && <small className="ellipsis">“{textQuery}”</small>}
                 <small>{procStatus}</small>
                 {identifiedBy && !processing && <small>Read by {identifiedBy}</small>}
                 <div className="progress"><i style={{ width: progress + '%' }} /></div>
@@ -377,6 +237,8 @@ export default function ImportScreen({ user, onAdded, ask }) {
           </div>
           <div className="button-row">
             <button className="gloss-btn" onClick={resetImport}>Start Over</button>
+            <button className="gloss-btn" onClick={() => { const q = `${form.artist} ${form.title}`; if (q.trim().length > 1) searchDiscogs(q) }}>Search Discogs</button>
+            <button className="gloss-btn" onClick={() => analyzeImage(imageData.split(',')[1], 'image/jpeg')}>Ask Claude</button>
           </div>
         </>
       )}
@@ -400,40 +262,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
         </>
       )}
 
-      {started && !processing && (
-        <>
-          <div className="group-label">Not Right?</div>
-          <div className="group">
-            <button className="cell" onClick={askAgain}>
-              <span className="grow">
-                Wrong Album — Ask Again
-                <small>
-                  {rejected.length
-                    ? `A stronger model looks again, skipping ${rejected.length} wrong ${rejected.length === 1 ? 'answer' : 'answers'}`
-                    : 'A stronger model takes another look'}
-                </small>
-              </span>
-              <Chevron />
-            </button>
-            {imageData && (
-              // A typed search is already the hint, so this is only for photos.
-              <form className="cell field compose" onSubmit={askWithHint}>
-                <span className="field-label">Hint</span>
-                <input value={hint} onChange={e => setHint(e.target.value)} maxLength={300} enterKeyHint="send" placeholder="e.g. Blue Note, 1965" />
-                <button className="cell-btn" type="submit" disabled={!hint.trim()}>Ask</button>
-              </form>
-            )}
-            <form className="cell field compose" onSubmit={searchDiscogsYourself}>
-              <span className="field-label">Discogs</span>
-              <input type="search" value={discogsQuery} onChange={e => setDiscogsQuery(e.target.value)} enterKeyHint="search" placeholder="Artist, title or catalogue no." />
-              <button className="cell-btn" type="submit" disabled={!discogsQuery.trim()}>Search</button>
-            </form>
-          </div>
-          <div className="group-footer">{imageData ? 'Ask Again and Hint use' : 'Ask Again uses'} a stronger model. Picking a Discogs pressing above fills in its details.</div>
-        </>
-      )}
-
-      {started && !processing && (
+      {imageData && !processing && (
         <>
           <div className="group-label">Details</div>
           <div className="group">

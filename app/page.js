@@ -1,13 +1,14 @@
 'use client'
 import { useState, useEffect, useEffectEvent, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
 import { supabase, ownCoverPath } from '@/lib/supabase'
-import { sortAlbums, loadDemoAlbums, pickRandom } from '@/lib/albums'
+import { sortAlbums, loadDemoAlbums, loadCollection, pickRandom } from '@/lib/albums'
 import { StatusBar, NavBar, TabBar, AlertView, ShuffleIcon, GearIcon } from '@/components/ui'
 import ImportScreen from '@/components/ImportScreen'
 import AlbumList from '@/components/AlbumList'
 import AlbumDetail from '@/components/AlbumDetail'
 import Nano, { NANO_COLORS } from '@/components/Nano'
 import SettingsScreen from '@/components/SettingsScreen'
+import { initNative } from '@/lib/native'
 
 const TABS = [
   { id: 'import', label: 'Import' },
@@ -16,6 +17,10 @@ const TABS = [
 ]
 
 const noSubscribe = () => () => {}
+
+// The website shows this collection to signed-out visitors. Leave it unset in
+// the iOS build so the app opens on its welcome screen instead.
+const FEATURED_OWNER = process.env.NEXT_PUBLIC_FEATURED_OWNER || null
 
 function savedNanoColor() {
   try {
@@ -31,6 +36,21 @@ function savedNanoColor() {
 function requestMotionAccess() {
   const DM = window.DeviceMotionEvent
   if (typeof DM?.requestPermission === 'function') DM.requestPermission().catch(() => {})
+}
+
+function Welcome({ onSignIn, onDemo }) {
+  return (
+    <div className="scroll pinstripes">
+      <div className="empty">
+        <strong>Welcome to Vinyl Crate</strong>
+        <small>Photograph a record cover and Vinyl Crate identifies it, finds the pressing on Discogs and files it in your crate.</small>
+      </div>
+      <button className="big-btn" onClick={onSignIn}>Sign In or Create Account</button>
+      <div className="button-row" style={{ marginTop: 12 }}>
+        <button className="gloss-btn" onClick={onDemo}>Browse a Demo Crate</button>
+      </div>
+    </div>
+  )
 }
 
 function SignInPrompt({ onSignIn }) {
@@ -55,6 +75,9 @@ export default function Home() {
   const demo = params.has('demo')
 
   const [user, setUser] = useState(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [demoCrate, setDemoCrate] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsView, setSettingsView] = useState('main')
   const [collection, setCollection] = useState([])
@@ -69,10 +92,14 @@ export default function Home() {
 
   const albums = useMemo(() => sortAlbums(collection), [collection])
   const viewingShared = !!sharedOwner && sharedOwner !== user?.id
-  const canEdit = !!user && !demo && !viewingShared
+  const inDemo = demo || demoCrate
+  const canEdit = !!user && !inDemo && !viewingShared
   // Demo records live only in this browser, so they can be removed without signing in.
-  const canManage = canEdit || demo
-  const shareOwnerId = sharedOwner ?? user?.id ?? collection.find(a => a.owner_id)?.owner_id
+  const canManage = canEdit || inDemo
+  // Whose records are on screen: a shared link's owner, you, or the website's featured crate.
+  const viewedOwner = sharedOwner ?? user?.id ?? FEATURED_OWNER
+  const shareOwnerId = sharedOwner ?? user?.id ?? FEATURED_OWNER
+  const showWelcome = authReady && loaded && !viewedOwner && !inDemo
   const flowAt = Math.min(flowIndex, Math.max(0, albums.length - 1))
 
   const ask = useCallback((title, message, buttons = ['OK']) =>
@@ -84,33 +111,47 @@ export default function Home() {
   }
 
   const showDemo = useCallback(async () => {
-    const demo = await loadDemoAlbums()
-    if (demo.length) setCollection(demo)
-    else ask('Demo Unavailable', 'Couldn’t reach Discogs either.')
+    const demoAlbums = await loadDemoAlbums()
+    if (demoAlbums.length) {
+      setDemoCrate(true)
+      setCollection(demoAlbums)
+    } else ask('Demo Unavailable', 'Couldn’t reach Discogs.')
   }, [ask])
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
-    return () => data.subscription.unsubscribe()
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      if (session) setDemoCrate(false) // signing in leaves the demo for your own crate
+      setAuthReady(true)
+    })
+    const stopNative = initNative(supabase)
+    return () => {
+      data.subscription.unsubscribe()
+      stopNative.then(stop => stop())
+    }
   }, [])
 
+  // Reload whenever whose collection we're showing changes (sign in, sign out, shared link).
   useEffect(() => {
+    if (!authReady || demoCrate) return
+    let cancelled = false
     async function load() {
       if (demo) return loadDemoAlbums()
-      let query = supabase.from('vinyl_records').select('*').order('created_at', { ascending: false })
-      if (sharedOwner) query = query.eq('owner_id', sharedOwner)
-      const { data, error } = await query
-      if (error) throw new Error(error.message)
-      return data
+      return viewedOwner ? loadCollection(supabase, viewedOwner) : []
     }
     load()
-      .then(setCollection)
+      .then(rows => {
+        if (cancelled) return
+        setCollection(rows)
+        setLoaded(true)
+      })
       .catch(async err => {
         console.error('Loading collection failed:', err)
         const choice = await ask('Cannot Connect', 'Vinyl Crate couldn’t reach its database. You can browse a demo crate from Discogs instead.', ['OK', 'Show Demo'])
         if (choice === 'Show Demo') showDemo()
       })
-  }, [ask, showDemo, demo, sharedOwner])
+    return () => { cancelled = true }
+  }, [ask, showDemo, demo, demoCrate, authReady, viewedOwner])
 
   function switchTab(id) {
     setTab(id)
@@ -258,6 +299,8 @@ export default function Home() {
           canEdit
             ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} />
             : <SignInPrompt onSignIn={() => openSettings('signin')} />
+        ) : showWelcome && tab !== 'import' ? (
+          <Welcome onSignIn={() => openSettings('signin')} onDemo={showDemo} />
         ) : tab === 'albums' || viewingShared ? (
           <AlbumList
             // Remount once the URL is read so a shared link's genre takes effect.
