@@ -2,7 +2,7 @@
 import { useState, useEffect, useEffectEvent, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
 import { supabase, ownCoverPath } from '@/lib/supabase'
 import { sortAlbums, loadDemoAlbums, pickRandom } from '@/lib/albums'
-import { StatusBar, NavBar, TabBar, AlertView, ShuffleIcon } from '@/components/ui'
+import { StatusBar, NavBar, TabBar, AlertView, ShuffleIcon, GearIcon } from '@/components/ui'
 import ImportScreen from '@/components/ImportScreen'
 import AlbumList from '@/components/AlbumList'
 import AlbumDetail from '@/components/AlbumDetail'
@@ -13,7 +13,6 @@ const TABS = [
   { id: 'import', label: 'Import' },
   { id: 'albums', label: 'Albums' },
   { id: 'coverflow', label: 'Cover Flow' },
-  { id: 'settings', label: 'Settings' },
 ]
 
 const noSubscribe = () => () => {}
@@ -56,6 +55,7 @@ export default function Home() {
   const demo = params.has('demo')
 
   const [user, setUser] = useState(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsView, setSettingsView] = useState('main')
   const [collection, setCollection] = useState([])
   const [tab, setTab] = useState('albums')
@@ -112,9 +112,15 @@ export default function Home() {
 
   function switchTab(id) {
     setTab(id)
-    setSettingsView('main')
+    setSettingsOpen(false)
     setDetail(null)
     setShufflePool(null)
+    setEditing(false)
+  }
+
+  function openSettings(view = 'main') {
+    setSettingsView(view)
+    setSettingsOpen(true)
     setEditing(false)
   }
 
@@ -138,7 +144,7 @@ export default function Home() {
 
   // Shake to shuffle, like the 4th-generation iPod nano.
   const onShake = useEffectEvent(() => {
-    if (tab !== 'import' && !alert && albums.length > 1) shuffle(albums)
+    if (tab !== 'import' && !settingsOpen && !alert && albums.length > 1) shuffle(albums)
   })
   useEffect(() => {
     // A shake is a sharp change (> 15 m/s²) on at least two axes between
@@ -205,13 +211,18 @@ export default function Home() {
         )}
       />
     )
-  } else if (tab === 'import' || tab === 'albums') {
+  } else if (!settingsOpen) {
+    // Settings lives behind a gear in the top-right; shared links don't get one.
+    const gear = !viewingShared && (
+      <button className="bar-btn icon" aria-label="Settings" onClick={() => openSettings()}><GearIcon /></button>
+    )
     nav = (
       <NavBar
-        title={tab === 'import' ? 'Add Record' : viewingShared ? 'Shared Albums' : 'Albums'}
-        right={tab === 'albums' && canEdit && albums.length > 0 && (
+        title={{ import: 'Add Record', coverflow: 'Cover Flow' }[tab] ?? (viewingShared ? 'Shared Albums' : 'Albums')}
+        left={tab === 'albums' && canEdit && albums.length > 0 && (
           <button className={`bar-btn${editing ? ' done' : ''}`} onClick={() => setEditing(e => !e)}>{editing ? 'Done' : 'Edit'}</button>
         )}
+        right={gear}
       />
     )
   }
@@ -222,23 +233,23 @@ export default function Home() {
       <div className="screen">
         <StatusBar />
         {nav}
-        {detail ? (
-          <AlbumDetail key={detail.id} album={detail} onDelete={canEdit ? a => deleteRecord(a) : null} />
-        ) : tab === 'import' ? (
-          canEdit
-            ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} />
-            : <SignInPrompt onSignIn={() => { setTab('settings'); setSettingsView('signin') }} />
-        ) : tab === 'settings' ? (
+        {settingsOpen ? (
           <SettingsScreen
             user={user}
             view={settingsView}
             setView={setSettingsView}
+            onClose={() => setSettingsOpen(false)}
             albums={albums}
             shareOwnerId={shareOwnerId}
-            viewingShared={viewingShared}
             ask={ask}
           />
-        ) : tab === 'albums' ? (
+        ) : detail ? (
+          <AlbumDetail key={detail.id} album={detail} onDelete={canEdit ? a => deleteRecord(a) : null} />
+        ) : tab === 'import' ? (
+          canEdit
+            ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} />
+            : <SignInPrompt onSignIn={() => openSettings('signin')} />
+        ) : tab === 'albums' || viewingShared ? (
           <AlbumList
             // Remount once the URL is read so a shared link's genre takes effect.
             key={sharedGenre ?? 'all'}
@@ -261,7 +272,8 @@ export default function Home() {
             onShuffle={() => nextPick(albums)}
           />
         )}
-        <TabBar tabs={TABS} active={tab} onChange={switchTab} />
+        {/* Shared links are browse-only: just the Albums list and Now Playing. */}
+        {!viewingShared && <TabBar tabs={TABS} active={tab} onChange={switchTab} />}
         <AlertView alert={alert} onChoose={choose} />
       </div>
       <div className="device-bottom">

@@ -47,7 +47,7 @@ function SignInForm({ onBack, ask }) {
   )
 }
 
-export default function SettingsScreen({ user, view, setView, albums, shareOwnerId, viewingShared, ask }) {
+export default function SettingsScreen({ user, view, setView, onClose, albums, shareOwnerId, ask }) {
   const [shareGenre, setShareGenre] = useState('All')
   const [signingOut, setSigningOut] = useState(false)
 
@@ -71,7 +71,7 @@ export default function SettingsScreen({ user, view, setView, albums, shareOwner
 
   return (
     <>
-      <NavBar title="Settings" />
+      <NavBar title="Settings" right={<button className="bar-btn done" onClick={onClose}>Done</button>} />
       <div className="scroll pinstripes">
         <div className="group-label">Account</div>
         {user ? (
@@ -121,11 +121,11 @@ export default function SettingsScreen({ user, view, setView, albums, shareOwner
             <Chevron />
           </label>
           <button className="cell" onClick={share} disabled={albums.length === 0}>
-            <span className="grow">{viewingShared ? 'Share This Collection' : 'Share Collection Link'}</span>
+            <span className="grow">Share Collection Link</span>
             <Chevron />
           </button>
         </div>
-        <div className="group-footer">Anyone with the link can browse and shuffle, but can’t change anything.</div>
+        <div className="group-footer">The link opens just your Albums list. Anyone with it can browse and shuffle, but can’t change anything.</div>
 
         <div className="group-footer" style={{ marginTop: 8 }}>
           Wax Cabinet · Covers read by {VISION_MODEL.name} · Pressings from Discogs
