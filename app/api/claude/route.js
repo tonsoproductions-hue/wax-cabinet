@@ -1,4 +1,4 @@
-import { identifyCover, configuredModels, retryModels } from '@/lib/vision'
+import { identifyCover, identifyFromText, configuredModels, retryModels } from '@/lib/vision'
 import { supabaseForRequest, signInRequired } from '@/lib/supabase-server'
 
 const EMPTY = { artist: '', title: '', year: '', genre: 'Other', label: '' }
@@ -7,12 +7,17 @@ const EMPTY = { artist: '', title: '', year: '', genre: 'Other', label: '' }
 export const maxDuration = 60
 
 export async function POST(request) {
-  // Each call costs money, so only signed-in users can identify covers.
+  // Each call costs money, so only signed-in users can identify records.
+  // Send either a cover photo ({ base64, mediaType }) or typed keywords ({ text }).
   const { user } = await supabaseForRequest(request)
   if (!user) return signInRequired()
 
   const body = await request.json()
   const { base64, mediaType, retry } = body
+  const text = typeof body.text === 'string' ? body.text.trim().slice(0, 300) : ''
+  if (!text && typeof base64 !== 'string') {
+    return Response.json({ ...EMPTY, error: 'Send a cover photo or some words to search for' }, { status: 400 })
+  }
   // The owner's corrections when they ask again, length-capped.
   const hint = typeof body.hint === 'string' ? body.hint.trim().slice(0, 300) : undefined
   const rejected = Array.isArray(body.rejected)
@@ -22,13 +27,12 @@ export async function POST(request) {
   try {
     // Cheapest model first; "ask again" goes straight to the stronger models.
     // See lib/vision.js, VISION_MODELS and VISION_RETRY_MODELS.
-    const { album, model, modelName, attempts } = await identifyCover(base64, mediaType, {
-      models: retry ? retryModels() : configuredModels(),
-      hint,
-      rejected,
-    })
+    const models = retry ? retryModels() : configuredModels()
+    const { album, model, modelName, attempts } = text
+      ? await identifyFromText(text, { models, rejected })
+      : await identifyCover(base64, mediaType, { models, hint, rejected })
     const cost = attempts.reduce((sum, a) => sum + (a.costUsd ?? 0), 0)
-    console.log(`Cover scan${retry ? ' (retry)' : ''}: ${model ?? 'unreadable'} after ${attempts.length} attempt(s), $${cost.toFixed(5)}`)
+    console.log(`${text ? 'Text search' : 'Cover scan'}${retry ? ' (retry)' : ''}: ${model ?? 'unreadable'} after ${attempts.length} attempt(s), $${cost.toFixed(5)}`)
     if (!album) return Response.json(EMPTY)
     const { artist, title, year, genre, label } = album
     // The model may stand by an answer the owner rejected (sometimes it's
@@ -37,7 +41,7 @@ export async function POST(request) {
     const repeated = rejected.some(r => same(r) === same(`${artist} — ${title}`))
     return Response.json({ artist, title, year, genre, label, identifiedBy: modelName, repeated })
   } catch (err) {
-    console.error('Cover identification failed:', err)
-    return Response.json({ ...EMPTY, error: 'Could not identify the cover' }, { status: 502 })
+    console.error('Identification failed:', err)
+    return Response.json({ ...EMPTY, error: text ? 'Could not look that up' : 'Could not identify the cover' }, { status: 502 })
   }
 }

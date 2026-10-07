@@ -285,6 +285,8 @@ button.cell:not(:disabled):active small, label.cell.tappable:active small { colo
   border-radius: 4px; border: 1px solid rgba(0,0,0,.2); background: #ddd;
 }
 .proc-cell { padding: 10px; }
+.search-thumb { display: flex; align-items: center; justify-content: center; background: linear-gradient(#f4f4f4, #dcdcdc); }
+.search-thumb svg { width: 24px; height: 24px; }
 button.cell { padding-top: 6px; padding-bottom: 6px; }
 .proc-cell .thumb { width: 56px; height: 56px; }
 
@@ -308,7 +310,7 @@ button.cell { padding-top: 6px; padding-bottom: 6px; }
 .field input::placeholder { color: #b3b3b3; }
 
 .field.compose .field-label { width: 72px; }
-.field.compose input { text-align: left; font-size: 15px; color: #000; }
+.field.compose input { text-align: left; text-align-last: left; font-size: 15px; color: #000; }
 .cell-btn {
   flex: 0 0 auto; height: 30px; padding: 0 12px;
   border: 1px solid #8f8f8f; border-radius: 6px;
