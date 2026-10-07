@@ -10,12 +10,24 @@ export async function GET(request) {
     ? `https://api.discogs.com/releases/${id}`
     : `https://api.discogs.com/database/search?q=${encodeURIComponent(q)}&type=release&format=Vinyl&per_page=5`
 
-  const resp = await fetch(url, {
-    headers: {
-      Authorization: `Discogs token=${process.env.DISCOGS_TOKEN}`,
-      'User-Agent': 'WaxCabinet/1.0'
-    }
-  })
+  let resp
+  try {
+    resp = await fetch(url, {
+      headers: {
+        Authorization: `Discogs token=${process.env.DISCOGS_TOKEN}`,
+        'User-Agent': 'WaxCabinet/1.0'
+      },
+      // Don't let a slow Discogs keep the Import screen waiting.
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch (err) {
+    console.error('Discogs request failed:', err.name, err.message)
+    const timedOut = err.name === 'TimeoutError'
+    return Response.json(
+      { error: timedOut ? 'Discogs took too long' : 'Couldn’t reach Discogs', results: [] },
+      { status: timedOut ? 504 : 502 }
+    )
+  }
 
   if (!resp.ok) {
     console.error('Discogs error:', resp.status, await resp.text())

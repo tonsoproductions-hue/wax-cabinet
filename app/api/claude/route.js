@@ -3,6 +3,9 @@ import { supabaseForRequest, signInRequired } from '@/lib/supabase-server'
 
 const EMPTY = { artist: '', title: '', year: '', genre: 'Other', label: '' }
 
+// Hard ceiling on this function; lib/vision.js normally finishes within ~35s.
+export const maxDuration = 60
+
 export async function POST(request) {
   // Each call costs money, so only signed-in users can identify covers.
   const { user } = await supabaseForRequest(request)
