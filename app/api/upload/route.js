@@ -7,9 +7,13 @@ export async function POST(request) {
   )
   const formData = await request.formData()
   const file = formData.get('file')
-  const bytes = await file.arrayBuffer()
-  const buffer = Buffer.from(bytes)
-  const path = `covers/${Date.now()}-${file.name}`
+  if (!file || typeof file === 'string' || !file.type.startsWith('image/')) {
+    return Response.json({ error: 'Expected an image file' }, { status: 400 })
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const safeName = file.name.replace(/[^\w.-]+/g, '_')
+  const path = `covers/${Date.now()}-${safeName}`
 
   const { error } = await supabase.storage
     .from('album-art')

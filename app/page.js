@@ -1,6 +1,15 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { GENRES, CONDITIONS } from '@/lib/genres'
+
+const EMPTY_FORM = {
+  artist: '', title: '', year: '', genre: 'Jazz',
+  label: '', condition: 'Near Mint (NM)', discogs_id: '', market_value: ''
+}
+
+const MODEL_NAMES = { claude: 'Claude', gemini: 'Gemini' }
+const MODEL_IDS = { claude: 'claude-opus-5-5', gemini: 'gemini-3.5-flash' }
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Spectral:ital,wght@0,400;0,500;1,400&display=swap');
@@ -638,20 +647,20 @@ export default function Home() {
   const [artistFilter, setArtistFilter] = useState('all')
   const [genreFilter, setGenreFilter] = useState('all')
   const [search, setSearch] = useState('')
- const [form, setForm] = useState({
-  artist: '', title: '', year: '', genre: 'Jazz',
-  label: '', condition: 'Near Mint (NM)', discogs_id: '', market_value: ''
-})
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [dbError, setDbError] = useState('')
+  const [dragging, setDragging] = useState(false)
 
-  useEffect(() => { loadCollection() }, [])
-
-  async function loadCollection() {
-    const { data } = await supabase
+  useEffect(() => {
+    supabase
       .from('vinyl_records')
       .select('*')
       .order('created_at', { ascending: false })
-    if (data) setCollection(data)
-  }
+      .then(({ data, error }) => {
+        if (error) setDbError(`Couldn't load the collection: ${error.message}`)
+        else setCollection(data)
+      }, err => setDbError(`Couldn't reach the database: ${err.message}`))
+  }, [])
 
 function handleFile(file) {
   if (!file || !file.type.startsWith('image/')) return
@@ -687,7 +696,8 @@ function handleFile(file) {
 }
 
 async function analyzeImage(base64, mediaType) {
-  setProcStatus(`${model === 'claude' ? 'Claude' : 'Gemini'} reading cover art...`)
+  setProcessing(true)
+  setProcStatus(`${MODEL_NAMES[model]} reading cover art...`)
   setProgress(25)
   try {
     const resp = await fetch('/api/claude', {
@@ -695,37 +705,57 @@ async function analyzeImage(base64, mediaType) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ base64, mediaType, model })
     })
-    const parsed = await resp.json()
-    console.log('🎵 Model identified:', parsed)  // ← see what AI returned
-    setForm(f => ({ ...f, ...parsed }))
+    const { error, ...album } = await resp.json()
+    if (error) throw new Error(error)
+    setForm(f => ({ ...f, ...album }))
+    if (!album.artist && !album.title) {
+      finishProcessing('Could not read the cover — fill in manually')
+      return
+    }
     setProgress(55)
-    setProcStatus('Searching Discogs...')
-    await searchDiscogs(`${parsed.artist} ${parsed.title}`)
+    await searchDiscogs(`${album.artist} ${album.title}`)
   } catch (err) {
-    console.error('❌ analyzeImage failed:', err)
-    setProcStatus('Could not identify — fill in manually')
-    setProcessing(false)
-    setProgress(100)
+    console.error('analyzeImage failed:', err)
+    finishProcessing('Could not identify — fill in manually')
   }
 }
 
-async function searchDiscogs(q) {
-  console.log('🔍 Searching Discogs for:', q)  // ← see the search query
-  const resp = await fetch(`/api/discogs?q=${encodeURIComponent(q)}`)
-  const data = await resp.json()
-  console.log('📀 Discogs results:', data.results?.slice(0, 4))  // ← see what came back
-  setDiscogsResults(data.results?.slice(0, 4) || [])
+function finishProcessing(status) {
   setProcessing(false)
   setProgress(100)
-  setProcStatus(data.results?.length > 0 ? 'Select a pressing below' : 'No Discogs matches — fill in manually')
+  setProcStatus(status)
+}
+
+async function searchDiscogs(q) {
+  setProcStatus('Searching Discogs...')
+  try {
+    const resp = await fetch(`/api/discogs?q=${encodeURIComponent(q)}`)
+    const data = await resp.json()
+    if (data.error) throw new Error(data.error)
+    const results = data.results?.slice(0, 4) || []
+    setDiscogsResults(results)
+    finishProcessing(results.length > 0 ? 'Select a pressing below' : 'No Discogs matches — fill in manually')
+  } catch (err) {
+    console.error('searchDiscogs failed:', err)
+    setDiscogsResults([])
+    finishProcessing('Discogs search failed — fill in manually')
+  }
 }
 
 async function pickDiscogs(result) {
   setSelectedDiscogs(result.id)
   setForm(f => ({ ...f, discogs_id: String(result.id) }))
   setProcStatus('Loading release details...')
-  const resp = await fetch(`/api/discogs?id=${result.id}`)
-  const d = await resp.json()
+  let d
+  try {
+    const resp = await fetch(`/api/discogs?id=${result.id}`)
+    d = await resp.json()
+    if (d.error) throw new Error(d.error)
+  } catch (err) {
+    console.error('pickDiscogs failed:', err)
+    setProcStatus('Could not load release details')
+    return
+  }
   setForm(f => ({
     ...f,
     artist: d.artists?.[0]?.name?.replace(/\s*\(\d+\)$/, '') || f.artist || '',
@@ -747,24 +777,22 @@ function resetImport() {
   setProcessing(false)
   setProgress(0)
   setProcStatus('')
-  setForm({ artist: '', title: '', year: '', genre: 'Jazz', label: '', condition: 'Near Mint (NM)', discogs_id: '', market_value: '' })
+  setForm(EMPTY_FORM)
 }
+
 async function addRecord() {
   setSaving(true)
-  let image_url = null
-
   try {
+    let image_url = null
     if (imageFile) {
-      console.log('1. Uploading image...')
       const fd = new FormData()
       fd.append('file', imageFile)
       const up = await fetch('/api/upload', { method: 'POST', body: fd })
       const upData = await up.json()
-      console.log('2. Upload result:', upData)
+      if (upData.error) throw new Error(`Cover upload failed: ${upData.error}`)
       image_url = upData.url
     }
 
-    console.log('3. Saving to Supabase...')
     const { data, error } = await supabase.from('vinyl_records').insert([{
       ...form,
       year: form.year ? parseInt(form.year) : null,
@@ -773,21 +801,17 @@ async function addRecord() {
       image_url,
       tracklist
     }]).select()
+    if (error) throw new Error(error.message)
 
-    console.log('4. Supabase result:', data, 'error:', error)
-
-    if (data) setCollection(c => [{ ...data[0], image_url }, ...c])
+    setCollection(c => [data[0], ...c])
+    resetImport()
+    setTab('collection')
   } catch (err) {
     console.error('addRecord failed:', err)
     alert('Error saving record: ' + err.message)
+  } finally {
+    setSaving(false)
   }
-
-  setImageData(null); setImageFile(null)
-  setDiscogsResults([]); setTracklist([])
-  setSelectedDiscogs(null); setProgress?.(0)
-  setForm({ artist: '', title: '', year: '', genre: 'Jazz', label: '', condition: 'Near Mint (NM)', discogs_id: '', market_value: '' })
-  setSaving(false)
-  setTab('collection')
 }
 
   const crateRef = useRef(null)
@@ -800,7 +824,7 @@ async function addRecord() {
   const filtered = collection
     .filter(r => artistFilter === 'all' || r.artist === artistFilter)
     .filter(r => genreFilter === 'all' || r.genre === genreFilter)
-    .filter(r => !search || (r.artist + r.title + r.genre).toLowerCase().includes(search.toLowerCase()))
+    .filter(r => !search || [r.artist, r.title, r.genre, r.label].join(' ').toLowerCase().includes(search.toLowerCase()))
   const totalValue = collection.reduce((s, r) => s + (r.market_value || 0), 0)
 
   const fieldStyle = { width: '100%', background: 'rgba(245,244,241,0.85)', border: '1px solid rgba(160,158,156,0.5)', borderRadius: 8, color: '#1d1d1f', fontFamily: "'Spectral', serif", fontSize: 12, padding: '8px 10px', outline: 'none', WebkitAppearance: 'none' }
@@ -812,7 +836,8 @@ async function deleteRecord(id) {
     .from('vinyl_records')
     .delete()
     .eq('id', id)
-  if (!error) setCollection(c => c.filter(r => r.id !== id))
+  if (error) alert('Error removing record: ' + error.message)
+  else setCollection(c => c.filter(r => r.id !== id))
 }
 
   return (
@@ -843,7 +868,7 @@ async function deleteRecord(id) {
               <button className={`model-btn${model === 'gemini' ? ' active' : ''}`} onClick={() => setModel('gemini')}>Gemini</button>
             </div>
             <span className="model-indicator">
-              ◆ {model === 'claude' ? 'claude-sonnet-4-20250514' : 'gemini-2.0-flash'}
+              ◆ {MODEL_IDS[model]}
             </span>
           </div>
         </div>
@@ -856,15 +881,27 @@ async function deleteRecord(id) {
 
         <div className="content">
 
+          {dbError && (
+            <div className="proc-card" style={{ marginTop: 0, marginBottom: 18, borderLeftColor: '#a33' }}>
+              <div className="proc-title">Database unavailable</div>
+              <div className="proc-status">{dbError}</div>
+            </div>
+          )}
+
           {/* IMPORT TAB */}
           {tab === 'import' && (
             <div>
-              <label className="drop-zone">
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
+              <label
+                className="drop-zone"
+                style={dragging ? { borderColor: '#3a3a3c', background: 'rgba(200,198,195,0.8)' } : undefined}
+                onDragOver={e => { e.preventDefault(); setDragging(true) }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={e => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]) }}
+              >
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { handleFile(e.target.files[0]); e.target.value = '' }} />
                 <div className="drop-icon">◎</div>
                 <div className="drop-text">Drop album art or photograph here</div>
-                <div className="drop-hint">PNG · JPG · WEBP — {model === 'claude' ? 'Claude' : 'Gemini'} reads the cover</div>
-                
+                <div className="drop-hint">PNG · JPG · WEBP — {MODEL_NAMES[model]} reads the cover</div>
               </label>
 
 
@@ -884,7 +921,7 @@ async function deleteRecord(id) {
       fontFamily: "'Spectral', serif", fontStyle: 'italic', fontSize: 11, padding: '6px 14px',
       background: 'rgba(215,213,210,0.6)', color: '#6e6e73', border: '1px solid rgba(160,158,156,0.5)',
       borderRadius: 99, cursor: 'pointer', letterSpacing: '.04em', transition: 'all .2s ease'
-    }}>↺ Re-run {model === 'claude' ? 'Claude' : 'Gemini'}</button>
+    }}>↺ Re-run {MODEL_NAMES[model]}</button>
   </div>
 )}
 
@@ -939,13 +976,13 @@ async function deleteRecord(id) {
                     <div>
                       <label style={labelStyle}>Genre</label>
                       <select style={fieldStyle} value={form.genre} onChange={e => setForm(f => ({ ...f, genre: e.target.value }))}>
-                        {['Jazz', 'Rock', 'Soul', 'Blues', 'Electronic', 'Classical', 'Hip-Hop', 'Folk', 'R&B', 'Pop', 'Country', 'Reggae', 'Other'].map(g => <option key={g}>{g}</option>)}
+                        {GENRES.map(g => <option key={g}>{g}</option>)}
                       </select>
                     </div>
                     <div>
                       <label style={labelStyle}>Condition</label>
                       <select style={fieldStyle} value={form.condition} onChange={e => setForm(f => ({ ...f, condition: e.target.value }))}>
-                        {['Mint (M)', 'Near Mint (NM)', 'Very Good+ (VG+)', 'Very Good (VG)', 'Good (G)'].map(c => <option key={c}>{c}</option>)}
+                        {CONDITIONS.map(c => <option key={c}>{c}</option>)}
                       </select>
                     </div>
                   </div>
@@ -1034,7 +1071,7 @@ async function deleteRecord(id) {
                           <div className="vinyl-year">{r.year || '—'}</div>
                           <div className="badge-row">
                             <span className="badge">{r.genre}</span>
-                            {r.market_value && <span className="badge-value">${parseFloat(r.market_value).toFixed(0)}</span>}
+                            {r.market_value != null && <span className="badge-value">${parseFloat(r.market_value).toFixed(0)}</span>}
                           </div>
                         </div>
                       </div>

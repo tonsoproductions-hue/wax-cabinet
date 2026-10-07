@@ -1,62 +1,72 @@
-export async function POST(request) {
-  const { base64, mediaType, model } = await request.json()
+import Anthropic from '@anthropic-ai/sdk'
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
+import { z } from 'zod'
+import { GENRES } from '@/lib/genres'
 
-  const prompt = 'This is a vinyl record album cover. Return ONLY valid JSON with keys: artist, title, year, genre, label. Genre must be one of: Jazz, Rock, Soul, Blues, Electronic, Classical, Hip-Hop, Folk, R&B, Pop, Country, Reggae, Other. No other text, no markdown.'
+const CLAUDE_MODEL = 'claude-opus-5-5'
+const GEMINI_MODEL = 'gemini-3.5-flash'
 
-if (model === 'gemini') {
+const AlbumSchema = z.object({
+  artist: z.string(),
+  title: z.string(),
+  year: z.string(),
+  genre: z.enum(GENRES),
+  label: z.string(),
+})
+
+const EMPTY = { artist: '', title: '', year: '', genre: 'Other', label: '' }
+
+const PROMPT = `This is a photo of a vinyl record album cover. Identify the album and return its artist, title, original release year, genre and record label. Use an empty string for anything you can't determine from the cover. Genre must be one of: ${GENRES.join(', ')}.`
+
+const anthropic = new Anthropic()
+
+async function identifyWithClaude(base64, mediaType) {
+  const response = await anthropic.messages.parse({
+    model: CLAUDE_MODEL,
+    max_tokens: 2000,
+    output_config: { effort: 'low', format: zodOutputFormat(AlbumSchema) },
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: PROMPT },
+      ],
+    }],
+  })
+  if (response.stop_reason === 'refusal') return null
+  return response.parsed_output
+}
+
+async function identifyWithGemini(base64, mediaType) {
   const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inline_data: { mime_type: mediaType, data: base64 } },
-            { text: prompt }
-          ]
-        }]
-      })
+        contents: [{ parts: [{ inline_data: { mime_type: mediaType, data: base64 } }, { text: PROMPT }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseJsonSchema: z.toJSONSchema(AlbumSchema),
+        },
+      }),
     }
   )
   const data = await resp.json()
-  console.log('Gemini status:', resp.status)
-  console.log('Gemini response:', JSON.stringify(data).slice(0, 1000))  // ← key line
-
-  if (data.error) {
-    console.error('Gemini error:', data.error)
-    return Response.json({ artist: '', title: '', year: '', genre: 'Other', label: '' })
-  }
-
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
-  try {
-    return Response.json(JSON.parse(text.replace(/```json|```/g, '').trim()))
-  } catch {
-    return Response.json({ artist: '', title: '', year: '', genre: 'Other', label: '' })
-  }
+  if (data.error) throw new Error(`Gemini: ${data.error.message}`)
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+  return text ? AlbumSchema.parse(JSON.parse(text)) : null
 }
 
-  // Default: Claude
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 500,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: prompt }
-        ]
-      }]
-    })
-  })
-  const data = await resp.json()
-  const text = data.content?.[0]?.text || '{}'
-  return Response.json(JSON.parse(text.replace(/```json|```/g, '').trim()))
+export async function POST(request) {
+  const { base64, mediaType, model } = await request.json()
+  try {
+    const album = model === 'gemini'
+      ? await identifyWithGemini(base64, mediaType)
+      : await identifyWithClaude(base64, mediaType)
+    return Response.json(album ?? EMPTY)
+  } catch (err) {
+    console.error('Cover identification failed:', err)
+    return Response.json({ ...EMPTY, error: 'Could not identify the cover' }, { status: 502 })
+  }
 }
