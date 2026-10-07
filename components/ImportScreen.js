@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { supabase, authHeaders } from '@/lib/supabase'
 import { GENRES, CONDITIONS } from '@/lib/genres'
-import { VISION_MODEL } from '@/lib/models'
 import { Chevron, Spinner } from '@/components/ui'
 
 const EMPTY_FORM = {
@@ -210,7 +209,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
           <Chevron />
         </label>
       </div>
-      <div className="group-footer">{VISION_MODEL.name} reads the cover, then Discogs finds the pressing.</div>
+      <div className="group-footer">Claude reads the cover, then Discogs finds the pressing.</div>
 
       {imageData && (
         <>

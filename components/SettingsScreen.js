@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { downloadCsv, shareUrl, shareLink } from '@/lib/export'
-import { VISION_MODEL } from '@/lib/models'
 import { NavBar, Chevron, Spinner } from '@/components/ui'
 
 function SignInForm({ onBack, ask }) {
@@ -128,7 +127,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
         <div className="group-footer">The link opens just your Albums list. Anyone with it can browse and shuffle, but can’t change anything.</div>
 
         <div className="group-footer" style={{ marginTop: 8 }}>
-          Wax Cabinet · Covers read by {VISION_MODEL.name} · Pressings from Discogs
+          Wax Cabinet · Covers read by Claude · Pressings from Discogs
         </div>
       </div>
     </>
