@@ -257,8 +257,9 @@ button { cursor: pointer; }
   border: none;
   text-align: left;
 }
-button.cell:active, label.cell.tappable:active { background: var(--ios-gloss-blue); color: #fff; }
-button.cell:active small, label.cell.tappable:active small { color: #fff; }
+button.cell:disabled { color: #a3a3a3; cursor: default; }
+button.cell:not(:disabled):active, label.cell.tappable:active { background: var(--ios-gloss-blue); color: #fff; }
+button.cell:not(:disabled):active small, label.cell.tappable:active small { color: #fff; }
 .cell small { display: block; font-size: 13px; font-weight: normal; color: #7f7f7f; margin-top: 1px; }
 .cell .grow { flex: 1; min-width: 0; }
 .cell .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

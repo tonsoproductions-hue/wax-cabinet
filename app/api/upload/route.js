@@ -1,10 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabaseForRequest, signInRequired } from '@/lib/supabase-server'
 
 export async function POST(request) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
+  const { supabase, user } = await supabaseForRequest(request)
+  if (!user) return signInRequired()
+
   const formData = await request.formData()
   const file = formData.get('file')
   if (!file || typeof file === 'string' || !file.type.startsWith('image/')) {
@@ -13,7 +12,8 @@ export async function POST(request) {
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const safeName = file.name.replace(/[^\w.-]+/g, '_')
-  const path = `covers/${Date.now()}-${safeName}`
+  // Each user's covers live in their own folder; storage policies enforce it.
+  const path = `${user.id}/${Date.now()}-${safeName}`
 
   const { error } = await supabase.storage
     .from('album-art')

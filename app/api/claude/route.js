@@ -3,6 +3,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { z } from 'zod'
 import { GENRES } from '@/lib/genres'
 import { VISION_MODEL } from '@/lib/models'
+import { supabaseForRequest, signInRequired } from '@/lib/supabase-server'
 
 const AlbumSchema = z.object({
   artist: z.string(),
@@ -36,6 +37,10 @@ async function identifyWithClaude(base64, mediaType) {
 }
 
 export async function POST(request) {
+  // Each call costs money, so only signed-in users can identify covers.
+  const { user } = await supabaseForRequest(request)
+  if (!user) return signInRequired()
+
   const { base64, mediaType } = await request.json()
   try {
     const album = await identifyWithClaude(base64, mediaType)

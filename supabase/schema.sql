@@ -1,8 +1,10 @@
--- Wax Cabinet database setup. Paste into the Supabase SQL editor for a fresh project.
+-- Wax Cabinet database setup for a fresh Supabase project. Paste into the SQL editor.
+-- (An existing project from before sign-in should run migrations/002_owner_sign_in.sql instead.)
 
 create table if not exists public.vinyl_records (
   id            uuid primary key default gen_random_uuid(),
   created_at    timestamptz not null default now(),
+  owner_id      uuid references auth.users (id) on delete cascade default auth.uid(),
   artist        text not null default '',
   title         text not null default '',
   year          integer,
@@ -15,18 +17,28 @@ create table if not exists public.vinyl_records (
   tracklist     jsonb not null default '[]'::jsonb
 );
 
--- The app talks to Supabase with the public anon key and has no sign-in yet,
--- so these policies let anyone with the URL read and edit the collection.
+create index if not exists vinyl_records_owner_id_idx on public.vinyl_records (owner_id);
+
+-- Anyone can browse; only a record's owner can add, change or delete it.
 alter table public.vinyl_records enable row level security;
 
-create policy "anon read"   on public.vinyl_records for select to anon using (true);
-create policy "anon insert" on public.vinyl_records for insert to anon with check (true);
-create policy "anon delete" on public.vinyl_records for delete to anon using (true);
+create policy "Anyone can browse records" on public.vinyl_records
+  for select using (true);
+create policy "Owners add records" on public.vinyl_records
+  for insert to authenticated with check (owner_id = auth.uid());
+create policy "Owners update records" on public.vinyl_records
+  for update to authenticated using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "Owners delete records" on public.vinyl_records
+  for delete to authenticated using (owner_id = auth.uid());
 
--- Public bucket for uploaded cover photos.
+-- Public bucket for cover photos; each user writes only to album-art/<their user id>/.
 insert into storage.buckets (id, name, public)
 values ('album-art', 'album-art', true)
 on conflict (id) do nothing;
 
-create policy "anon upload covers" on storage.objects
-  for insert to anon with check (bucket_id = 'album-art');
+create policy "Owners upload covers" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'album-art' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "Owners delete covers" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'album-art' and (storage.foldername(name))[1] = auth.uid()::text);

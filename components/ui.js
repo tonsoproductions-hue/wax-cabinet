@@ -31,7 +31,19 @@ export function NavBar({ title, left, right, variant }) {
   )
 }
 
+// Eight-tooth gear centred in the 30×30 tab icon box, with a hole in the middle.
+function gearPath() {
+  const pts = []
+  for (let i = 0; i < 32; i++) {
+    const r = i % 4 < 2 ? 13 : 9.5
+    const a = ((i + 0.5) / 32) * Math.PI * 2
+    pts.push(`${(15 + r * Math.cos(a)).toFixed(2)} ${(15 + r * Math.sin(a)).toFixed(2)}`)
+  }
+  return `M${pts.join('L')}z M15 10.5a4.5 4.5 0 1 0 0 9a4.5 4.5 0 1 0 0-9z`
+}
+
 const TAB_ICONS = {
+  settings: <path fillRule="evenodd" d={gearPath()} />,
   import: (
     <path fillRule="evenodd" d="M5 9h3.2l2-3h7.6l2 3H23a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 23 23H5a1.5 1.5 0 0 1-1.5-1.5v-11A1.5 1.5 0 0 1 5 9zm9 2.5a5 5 0 1 0 0 10a5 5 0 1 0 0-10zm0 2.3a2.7 2.7 0 1 1 0 5.4a2.7 2.7 0 1 1 0-5.4z" />
   ),

@@ -67,7 +67,7 @@ export default function AlbumDetail({ album, onDelete }) {
         </>
       )}
 
-      <button className="big-btn red" onClick={() => onDelete(album)}>Remove from Collection</button>
+      {onDelete && <button className="big-btn red" onClick={() => onDelete(album)}>Remove from Collection</button>}
     </div>
   )
 }

@@ -1,20 +1,22 @@
 'use client'
-import { useState, useEffect, useEffectEvent, useCallback, useMemo, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState, useEffect, useEffectEvent, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
+import { supabase, ownCoverPath } from '@/lib/supabase'
 import { sortAlbums, loadDemoAlbums, pickRandom } from '@/lib/albums'
 import { StatusBar, NavBar, TabBar, AlertView, ShuffleIcon } from '@/components/ui'
 import ImportScreen from '@/components/ImportScreen'
 import AlbumList from '@/components/AlbumList'
 import AlbumDetail from '@/components/AlbumDetail'
 import Nano, { NANO_COLORS } from '@/components/Nano'
+import SettingsScreen from '@/components/SettingsScreen'
 
 const TABS = [
   { id: 'import', label: 'Import' },
   { id: 'albums', label: 'Albums' },
   { id: 'coverflow', label: 'Cover Flow' },
+  { id: 'settings', label: 'Settings' },
 ]
 
-const TAB_TITLES = { import: 'Add Record', albums: 'Albums' }
+const noSubscribe = () => () => {}
 
 function savedNanoColor() {
   try {
@@ -32,7 +34,29 @@ function requestMotionAccess() {
   if (typeof DM?.requestPermission === 'function') DM.requestPermission().catch(() => {})
 }
 
+function SignInPrompt({ onSignIn }) {
+  return (
+    <div className="scroll pinstripes">
+      <div className="empty">
+        <strong>Sign In to Add Records</strong>
+        <small>Anyone can browse and shuffle this collection. Only its owner can add or remove records.</small>
+      </div>
+      <button className="big-btn" onClick={onSignIn}>Sign In</button>
+    </div>
+  )
+}
+
 export default function Home() {
+  // URL options: ?c=<owner id> opens a shared collection, &g=<genre> pre-filters it,
+  // ?demo fills the crate from Discogs. Read after hydration (server snapshot is empty).
+  const search = useSyncExternalStore(noSubscribe, () => window.location.search, () => '')
+  const params = useMemo(() => new URLSearchParams(search), [search])
+  const sharedOwner = params.get('c')
+  const sharedGenre = params.get('g')
+  const demo = params.has('demo')
+
+  const [user, setUser] = useState(null)
+  const [settingsView, setSettingsView] = useState('main')
   const [collection, setCollection] = useState([])
   const [tab, setTab] = useState('albums')
   const [detail, setDetail] = useState(null)
@@ -44,6 +68,9 @@ export default function Home() {
   const recentPicks = useRef([])
 
   const albums = useMemo(() => sortAlbums(collection), [collection])
+  const viewingShared = !!sharedOwner && sharedOwner !== user?.id
+  const canEdit = !!user && !demo && !viewingShared
+  const shareOwnerId = sharedOwner ?? user?.id ?? collection.find(a => a.owner_id)?.owner_id
   const flowAt = Math.min(flowIndex, Math.max(0, albums.length - 1))
 
   const ask = useCallback((title, message, buttons = ['OK']) =>
@@ -61,13 +88,16 @@ export default function Home() {
   }, [ask])
 
   useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
+    return () => data.subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
     async function load() {
-      // ?demo skips the database and fills the crate from Discogs.
-      if (new URLSearchParams(window.location.search).has('demo')) return loadDemoAlbums()
-      const { data, error } = await supabase
-        .from('vinyl_records')
-        .select('*')
-        .order('created_at', { ascending: false })
+      if (demo) return loadDemoAlbums()
+      let query = supabase.from('vinyl_records').select('*').order('created_at', { ascending: false })
+      if (sharedOwner) query = query.eq('owner_id', sharedOwner)
+      const { data, error } = await query
       if (error) throw new Error(error.message)
       return data
     }
@@ -78,10 +108,11 @@ export default function Home() {
         const choice = await ask('Cannot Connect', 'Wax Cabinet couldn’t reach its database. You can browse a demo crate from Discogs instead.', ['OK', 'Show Demo'])
         if (choice === 'Show Demo') showDemo()
       })
-  }, [ask, showDemo])
+  }, [ask, showDemo, demo, sharedOwner])
 
   function switchTab(id) {
     setTab(id)
+    setSettingsView('main')
     setDetail(null)
     setShufflePool(null)
     setEditing(false)
@@ -147,6 +178,9 @@ export default function Home() {
         ask('Couldn’t Remove Album', error.message)
         return
       }
+      // Tidy up the cover photo too; older covers outside the user's folder stay put.
+      const coverPath = ownCoverPath(album.image_url, user?.id)
+      if (coverPath) supabase.storage.from('album-art').remove([coverPath])
     }
     setCollection(c => c.filter(r => r.id !== album.id))
     setShufflePool(p => p?.filter(r => r.id !== album.id) ?? null)
@@ -171,11 +205,11 @@ export default function Home() {
         )}
       />
     )
-  } else if (tab !== 'coverflow') {
+  } else if (tab === 'import' || tab === 'albums') {
     nav = (
       <NavBar
-        title={TAB_TITLES[tab]}
-        right={tab === 'albums' && albums.length > 0 && (
+        title={tab === 'import' ? 'Add Record' : viewingShared ? 'Shared Albums' : 'Albums'}
+        right={tab === 'albums' && canEdit && albums.length > 0 && (
           <button className={`bar-btn${editing ? ' done' : ''}`} onClick={() => setEditing(e => !e)}>{editing ? 'Done' : 'Edit'}</button>
         )}
       />
@@ -189,13 +223,28 @@ export default function Home() {
         <StatusBar />
         {nav}
         {detail ? (
-          <AlbumDetail key={detail.id} album={detail} onDelete={a => deleteRecord(a)} />
+          <AlbumDetail key={detail.id} album={detail} onDelete={canEdit ? a => deleteRecord(a) : null} />
         ) : tab === 'import' ? (
-          <ImportScreen onAdded={handleAdded} ask={ask} />
+          canEdit
+            ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} />
+            : <SignInPrompt onSignIn={() => { setTab('settings'); setSettingsView('signin') }} />
+        ) : tab === 'settings' ? (
+          <SettingsScreen
+            user={user}
+            view={settingsView}
+            setView={setSettingsView}
+            albums={albums}
+            shareOwnerId={shareOwnerId}
+            viewingShared={viewingShared}
+            ask={ask}
+          />
         ) : tab === 'albums' ? (
           <AlbumList
+            // Remount once the URL is read so a shared link's genre takes effect.
+            key={sharedGenre ?? 'all'}
             albums={albums}
-            editing={editing}
+            initialGenre={sharedGenre}
+            editing={editing && canEdit}
             onOpen={openAlbum}
             onDelete={a => deleteRecord(a, { confirm: false })}
             onShuffle={pool => { requestMotionAccess(); shuffle(pool) }}

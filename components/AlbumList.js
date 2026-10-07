@@ -8,9 +8,9 @@ function sectionLetter(album) {
   return c >= 'A' && c <= 'Z' ? c : '#'
 }
 
-export default function AlbumList({ albums, editing, onOpen, onDelete, onShuffle }) {
+export default function AlbumList({ albums, initialGenre, editing, onOpen, onDelete, onShuffle }) {
   const [search, setSearch] = useState('')
-  const [genre, setGenre] = useState('All')
+  const [genre, setGenre] = useState(initialGenre || 'All')
   const [armed, setArmed] = useState(null)
   const scrollRef = useRef(null)
 

@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, authHeaders } from '@/lib/supabase'
 import { GENRES, CONDITIONS } from '@/lib/genres'
 import { VISION_MODEL } from '@/lib/models'
 import { Chevron, Spinner } from '@/components/ui'
@@ -19,7 +19,7 @@ const TEXT_FIELDS = [
   ['Discogs ID', 'discogs_id', 'numeric'],
 ]
 
-export default function ImportScreen({ onAdded, ask }) {
+export default function ImportScreen({ user, onAdded, ask }) {
   const [imageData, setImageData] = useState(null)
   const [imageFile, setImageFile] = useState(null)
   const [processing, setProcessing] = useState(false)
@@ -77,7 +77,7 @@ export default function ImportScreen({ onAdded, ask }) {
     try {
       const resp = await fetch('/api/claude', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({ base64, mediaType })
       })
       const { error, ...album } = await resp.json()
@@ -158,7 +158,7 @@ export default function ImportScreen({ onAdded, ask }) {
       if (imageFile) {
         const fd = new FormData()
         fd.append('file', imageFile)
-        const up = await fetch('/api/upload', { method: 'POST', body: fd })
+        const up = await fetch('/api/upload', { method: 'POST', body: fd, headers: await authHeaders() })
         const upData = await up.json()
         if (upData.error) throw new Error(`Cover upload failed: ${upData.error}`)
         image_url = upData.url
@@ -170,7 +170,8 @@ export default function ImportScreen({ onAdded, ask }) {
         market_value: form.market_value ? parseFloat(form.market_value) : null,
         discogs_id: form.discogs_id ? parseInt(form.discogs_id) : null,
         image_url,
-        tracklist
+        tracklist,
+        owner_id: user.id
       }]).select()
       if (error) throw new Error(error.message)
 
