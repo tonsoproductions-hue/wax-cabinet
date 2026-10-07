@@ -2,10 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { z } from 'zod'
 import { GENRES } from '@/lib/genres'
-import { MODELS } from '@/lib/models'
-
-const CLAUDE_MODEL = MODELS.claude.id
-const GEMINI_MODEL = MODELS.gemini.id
+import { VISION_MODEL } from '@/lib/models'
 
 const AlbumSchema = z.object({
   artist: z.string(),
@@ -23,7 +20,7 @@ const anthropic = new Anthropic()
 
 async function identifyWithClaude(base64, mediaType) {
   const response = await anthropic.messages.parse({
-    model: CLAUDE_MODEL,
+    model: VISION_MODEL.id,
     max_tokens: 2000,
     output_config: { effort: 'low', format: zodOutputFormat(AlbumSchema) },
     messages: [{
@@ -38,33 +35,10 @@ async function identifyWithClaude(base64, mediaType) {
   return response.parsed_output
 }
 
-async function identifyWithGemini(base64, mediaType) {
-  const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-      body: JSON.stringify({
-        contents: [{ parts: [{ inline_data: { mime_type: mediaType, data: base64 } }, { text: PROMPT }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseJsonSchema: z.toJSONSchema(AlbumSchema),
-        },
-      }),
-    }
-  )
-  const data = await resp.json()
-  if (data.error) throw new Error(`Gemini: ${data.error.message}`)
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  return text ? AlbumSchema.parse(JSON.parse(text)) : null
-}
-
 export async function POST(request) {
-  const { base64, mediaType, model } = await request.json()
+  const { base64, mediaType } = await request.json()
   try {
-    const album = model === 'gemini'
-      ? await identifyWithGemini(base64, mediaType)
-      : await identifyWithClaude(base64, mediaType)
+    const album = await identifyWithClaude(base64, mediaType)
     return Response.json(album ?? EMPTY)
   } catch (err) {
     console.error('Cover identification failed:', err)

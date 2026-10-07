@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { GENRES, CONDITIONS } from '@/lib/genres'
-import { MODELS } from '@/lib/models'
+import { VISION_MODEL } from '@/lib/models'
 import { Chevron, Spinner } from '@/components/ui'
 
 const EMPTY_FORM = {
@@ -19,7 +19,7 @@ const TEXT_FIELDS = [
   ['Discogs ID', 'discogs_id', 'numeric'],
 ]
 
-export default function ImportScreen({ model, setModel, onAdded, ask }) {
+export default function ImportScreen({ onAdded, ask }) {
   const [imageData, setImageData] = useState(null)
   const [imageFile, setImageFile] = useState(null)
   const [processing, setProcessing] = useState(false)
@@ -72,13 +72,13 @@ export default function ImportScreen({ model, setModel, onAdded, ask }) {
 
   async function analyzeImage(base64, mediaType) {
     setProcessing(true)
-    setProcStatus(`${MODELS[model].name} is reading the cover…`)
+    setProcStatus('Claude is reading the cover…')
     setProgress(25)
     try {
       const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64, mediaType, model })
+        body: JSON.stringify({ base64, mediaType })
       })
       const { error, ...album } = await resp.json()
       if (error) throw new Error(error)
@@ -188,14 +188,7 @@ export default function ImportScreen({ model, setModel, onAdded, ask }) {
 
   return (
     <div className="scroll pinstripes">
-      <div className="group-label">Vision Model</div>
-      <div className="segmented">
-        {Object.entries(MODELS).map(([id, m]) => (
-          <button key={id} className={id === model ? 'on' : ''} onClick={() => setModel(id)}>{m.name}</button>
-        ))}
-      </div>
-      <div className="group-footer">{MODELS[model].id}</div>
-
+      <div className="group-label">New Record</div>
       <div className="group">
         <label
           className={`cell tappable photo-cell${dragging ? ' dragging' : ''}`}
@@ -216,6 +209,7 @@ export default function ImportScreen({ model, setModel, onAdded, ask }) {
           <Chevron />
         </label>
       </div>
+      <div className="group-footer">{VISION_MODEL.name} reads the cover, then Discogs finds the pressing.</div>
 
       {imageData && (
         <>
@@ -234,7 +228,7 @@ export default function ImportScreen({ model, setModel, onAdded, ask }) {
           <div className="button-row">
             <button className="gloss-btn" onClick={resetImport}>Start Over</button>
             <button className="gloss-btn" onClick={() => { const q = `${form.artist} ${form.title}`; if (q.trim().length > 1) searchDiscogs(q) }}>Search Discogs</button>
-            <button className="gloss-btn" onClick={() => analyzeImage(imageData.split(',')[1], 'image/jpeg')}>Ask {MODELS[model].name}</button>
+            <button className="gloss-btn" onClick={() => analyzeImage(imageData.split(',')[1], 'image/jpeg')}>Ask Claude</button>
           </div>
         </>
       )}

@@ -29,7 +29,6 @@ function savedNanoColor() {
 export default function Home() {
   const [collection, setCollection] = useState([])
   const [tab, setTab] = useState('albums')
-  const [model, setModel] = useState('claude')
   const [detail, setDetail] = useState(null)
   const [editing, setEditing] = useState(false)
   const [flowIndex, setFlowIndex] = useState(0)
@@ -135,7 +134,7 @@ export default function Home() {
         {detail ? (
           <AlbumDetail key={detail.id} album={detail} onDelete={a => deleteRecord(a)} />
         ) : tab === 'import' ? (
-          <ImportScreen model={model} setModel={setModel} onAdded={handleAdded} ask={ask} />
+          <ImportScreen onAdded={handleAdded} ask={ask} />
         ) : tab === 'albums' ? (
           <AlbumList albums={albums} editing={editing} onOpen={setDetail} onDelete={a => deleteRecord(a, { confirm: false })} />
         ) : (
