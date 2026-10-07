@@ -10,13 +10,13 @@ export default function Support() {
       <h2>Getting started</h2>
       <ol>
         <li>Open Settings (the gear) and choose <em>Sign In or Create Account</em>. Enter your email, then tap the link or type the 6-digit code we send.</li>
-        <li>On the Import tab, choose a photo of a record cover. Vinyl Crate identifies it and lists matching pressings from Discogs.</li>
+        <li>On the Import tab, choose a photo of a record cover, or type its name (or a description, like “the one with the prism on the front”) and tap <em>Find</em>. Vinyl Crate identifies it and lists matching pressings from Discogs.</li>
         <li>Pick your pressing, check the details and tap <em>Add to Collection</em>.</li>
       </ol>
 
       <h2>Common questions</h2>
       <h3>The cover wasn’t recognised</h3>
-      <p>Try a straight-on photo in good light, or fill in the artist and title yourself and tap <em>Search Discogs</em>. Each account can scan a limited number of covers per day.</p>
+      <p>Tap <em>Wrong Album — Ask Again</em>, add a hint, or type the name into the search box instead. You can also search Discogs directly under <em>Not Right?</em>. Each account can make a limited number of lookups per day.</p>
       <h3>The sign-in email didn’t arrive</h3>
       <p>Check your spam folder and wait a minute before asking for another. In the app, you can type the 6-digit code from the email instead of tapping the link.</p>
       <h3>How do I share my collection?</h3>

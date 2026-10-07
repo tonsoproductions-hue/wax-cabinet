@@ -15,7 +15,7 @@ export default function Privacy() {
         <li><strong>Your email address</strong>, to sign you in. We don’t ask for your name or a password unless you choose one.</li>
         <li><strong>Your collection</strong>: the artist, title, year, genre, label, condition, value and tracklist of each record you add.</li>
         <li><strong>Cover photos you add.</strong> They’re stored at a web address that anyone who has it can open, so don’t photograph anything private.</li>
-        <li><strong>A log of cover scans</strong> (time, which AI model answered and its cost), used to keep the service affordable and enforce a daily limit.</li>
+        <li><strong>A log of lookups</strong> (time, which AI model answered and its cost) for cover scans and name searches, used to keep the service affordable and enforce a daily limit.</li>
       </ul>
       <p>We don’t use advertising, analytics trackers or data brokers, and we don’t sell your information.</p>
 
@@ -24,7 +24,7 @@ export default function Privacy() {
 
       <h2>Services we use</h2>
       <ul>
-        <li><strong>Anthropic (Claude)</strong> reads the cover photo you scan to identify the album. Photos are sent for that request only; Anthropic doesn’t use API data to train its models.</li>
+        <li><strong>Anthropic (Claude)</strong> reads the cover photo you scan, or the words you type in the search box, to identify the album. They’re sent for that request only; Anthropic doesn’t use API data to train its models.</li>
         <li><strong>Discogs</strong> receives the artist and title we search for, to find pressings, tracklists and prices.</li>
         <li><strong>Supabase</strong> stores your account, collection and cover photos.</li>
         <li><strong>Vercel</strong> hosts the website and the app’s servers.</li>
