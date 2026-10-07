@@ -321,36 +321,6 @@ export default function ImportScreen({ user, onAdded, ask }) {
           <div className="button-row">
             <button className="gloss-btn" onClick={resetImport}>Start Over</button>
           </div>
-
-          {!processing && (
-            <>
-              <div className="group-label">Not Right?</div>
-              <div className="group">
-                <button className="cell" onClick={askAgain}>
-                  <span className="grow">
-                    Wrong Album — Ask Again
-                    <small>
-                      {rejected.length
-                        ? `A stronger model looks again, skipping ${rejected.length} wrong ${rejected.length === 1 ? 'answer' : 'answers'}`
-                        : 'A stronger model takes another look'}
-                    </small>
-                  </span>
-                  <Chevron />
-                </button>
-                <form className="cell field compose" onSubmit={askWithHint}>
-                  <span className="field-label">Hint</span>
-                  <input value={hint} onChange={e => setHint(e.target.value)} maxLength={300} enterKeyHint="send" placeholder="e.g. Blue Note, 1965" />
-                  <button className="cell-btn" type="submit" disabled={!hint.trim()}>Ask</button>
-                </form>
-                <form className="cell field compose" onSubmit={searchDiscogsYourself}>
-                  <span className="field-label">Discogs</span>
-                  <input type="search" value={discogsQuery} onChange={e => setDiscogsQuery(e.target.value)} enterKeyHint="search" placeholder="Artist, title or catalogue no." />
-                  <button className="cell-btn" type="submit" disabled={!discogsQuery.trim()}>Search</button>
-                </form>
-              </div>
-              <div className="group-footer">Ask Again and Hint use a stronger model. Picking a Discogs pressing below fills in its details.</div>
-            </>
-          )}
         </>
       )}
 
@@ -370,6 +340,36 @@ export default function ImportScreen({ user, onAdded, ask }) {
               </button>
             ))}
           </div>
+        </>
+      )}
+
+      {imageData && !processing && (
+        <>
+          <div className="group-label">Not Right?</div>
+          <div className="group">
+            <button className="cell" onClick={askAgain}>
+              <span className="grow">
+                Wrong Album — Ask Again
+                <small>
+                  {rejected.length
+                    ? `A stronger model looks again, skipping ${rejected.length} wrong ${rejected.length === 1 ? 'answer' : 'answers'}`
+                    : 'A stronger model takes another look'}
+                </small>
+              </span>
+              <Chevron />
+            </button>
+            <form className="cell field compose" onSubmit={askWithHint}>
+              <span className="field-label">Hint</span>
+              <input value={hint} onChange={e => setHint(e.target.value)} maxLength={300} enterKeyHint="send" placeholder="e.g. Blue Note, 1965" />
+              <button className="cell-btn" type="submit" disabled={!hint.trim()}>Ask</button>
+            </form>
+            <form className="cell field compose" onSubmit={searchDiscogsYourself}>
+              <span className="field-label">Discogs</span>
+              <input type="search" value={discogsQuery} onChange={e => setDiscogsQuery(e.target.value)} enterKeyHint="search" placeholder="Artist, title or catalogue no." />
+              <button className="cell-btn" type="submit" disabled={!discogsQuery.trim()}>Search</button>
+            </form>
+          </div>
+          <div className="group-footer">Ask Again and Hint use a stronger model. Picking a Discogs pressing above fills in its details.</div>
         </>
       )}
 
