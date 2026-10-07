@@ -70,6 +70,8 @@ export default function Home() {
   const albums = useMemo(() => sortAlbums(collection), [collection])
   const viewingShared = !!sharedOwner && sharedOwner !== user?.id
   const canEdit = !!user && !demo && !viewingShared
+  // Demo records live only in this browser, so they can be removed without signing in.
+  const canManage = canEdit || demo
   const shareOwnerId = sharedOwner ?? user?.id ?? collection.find(a => a.owner_id)?.owner_id
   const flowAt = Math.min(flowIndex, Math.max(0, albums.length - 1))
 
@@ -212,17 +214,24 @@ export default function Home() {
       />
     )
   } else if (!settingsOpen) {
-    // Settings lives behind a gear in the top-right; shared links don't get one.
+    // Settings gear top-left, Edit top-right. Shared links get neither.
     const gear = !viewingShared && (
       <button className="bar-btn icon" aria-label="Settings" onClick={() => openSettings()}><GearIcon /></button>
+    )
+    // Edit is always offered on your own Albums; signed out, it leads to Sign In.
+    const edit = tab === 'albums' && !viewingShared && albums.length > 0 && (
+      <button
+        className={`bar-btn${editing ? ' done' : ''}`}
+        onClick={() => (canManage ? setEditing(e => !e) : openSettings('signin'))}
+      >
+        {editing ? 'Done' : 'Edit'}
+      </button>
     )
     nav = (
       <NavBar
         title={{ import: 'Add Record', coverflow: 'Cover Flow' }[tab] ?? (viewingShared ? 'Shared Albums' : 'Albums')}
-        left={tab === 'albums' && canEdit && albums.length > 0 && (
-          <button className={`bar-btn${editing ? ' done' : ''}`} onClick={() => setEditing(e => !e)}>{editing ? 'Done' : 'Edit'}</button>
-        )}
-        right={gear}
+        left={gear}
+        right={edit}
       />
     )
   }
@@ -244,7 +253,7 @@ export default function Home() {
             ask={ask}
           />
         ) : detail ? (
-          <AlbumDetail key={detail.id} album={detail} onDelete={canEdit ? a => deleteRecord(a) : null} />
+          <AlbumDetail key={detail.id} album={detail} onDelete={canManage ? a => deleteRecord(a) : null} />
         ) : tab === 'import' ? (
           canEdit
             ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} />
@@ -255,7 +264,7 @@ export default function Home() {
             key={sharedGenre ?? 'all'}
             albums={albums}
             initialGenre={sharedGenre}
-            editing={editing && canEdit}
+            editing={editing && canManage}
             onOpen={openAlbum}
             onDelete={a => deleteRecord(a, { confirm: false })}
             onShuffle={pool => { requestMotionAccess(); shuffle(pool) }}
