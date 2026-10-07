@@ -1,4 +1,4 @@
-import { identifyCover } from '@/lib/vision'
+import { identifyCover, configuredModels, retryModels } from '@/lib/vision'
 import { supabaseForRequest, signInRequired } from '@/lib/supabase-server'
 
 // Each scan costs a fraction of a cent (Haiku ~$0.001, Sonnet ~$0.004), but
@@ -13,7 +13,12 @@ export async function POST(request) {
   const { supabase, user } = await supabaseForRequest(request)
   if (!user) return signInRequired()
 
-  const { base64, mediaType } = await request.json()
+  const body = await request.json()
+  const { base64, mediaType, retry } = body
+  const hint = typeof body.hint === 'string' ? body.hint.trim().slice(0, 300) : undefined
+  const rejected = Array.isArray(body.rejected)
+    ? body.rejected.filter(r => typeof r === 'string' && r.trim()).slice(0, 5).map(r => r.trim().slice(0, 200))
+    : []
   if (typeof base64 !== 'string' || !MEDIA_TYPES.includes(mediaType)) {
     return Response.json({ error: 'Expected a JPEG, PNG, WebP or GIF image' }, { status: 400 })
   }
@@ -37,7 +42,13 @@ export async function POST(request) {
 
   let result
   try {
-    result = await identifyCover(base64, mediaType)
+    // "Ask again" goes straight to the stronger models, with the owner's
+    // hint and the answers they rejected (both length-capped above).
+    result = await identifyCover(base64, mediaType, {
+      models: retry ? retryModels() : configuredModels(),
+      hint,
+      rejected,
+    })
   } catch (err) {
     console.error('Cover identification failed:', err)
     return Response.json({ error: 'Could not identify the cover' }, { status: 502 })
@@ -55,5 +66,9 @@ export async function POST(request) {
 
   if (!result.album) return Response.json({ album: null })
   const { confidence, ...album } = result.album
-  return Response.json({ album, confidence, identifiedBy: result.modelName })
+  // The model may stand by an answer the owner rejected (sometimes it's
+  // right). Flag it so the app can say so rather than look like nothing happened.
+  const same = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '')
+  const repeated = rejected.some(r => same(r) === same(`${album.artist} — ${album.title}`))
+  return Response.json({ album, confidence, identifiedBy: result.modelName, repeated })
 }

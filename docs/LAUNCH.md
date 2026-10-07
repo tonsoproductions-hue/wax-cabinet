@@ -206,5 +206,8 @@ Then redeploy. Also:
 ### Changing the vision models
 
 Set `VISION_MODELS` in Vercel to any comma-separated list of Claude model ids,
-cheapest first, and redeploy; no code change. Prices for cost logging live in
+cheapest first, and redeploy; no code change. When someone taps **Wrong Album — Ask
+Again** or sends a hint, the app uses `VISION_RETRY_MODELS` instead (default:
+every model after the cheapest), tells the model which answers were wrong, and
+says so if the model stands by one of them. Prices for cost logging live in
 `lib/vision.js` (`MODEL_CATALOG`); other providers can be added there as one function.
