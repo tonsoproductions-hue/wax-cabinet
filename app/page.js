@@ -1,8 +1,8 @@
 'use client'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useEffectEvent, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { sortAlbums, loadDemoAlbums } from '@/lib/albums'
-import { StatusBar, NavBar, TabBar, AlertView } from '@/components/ui'
+import { sortAlbums, loadDemoAlbums, pickRandom } from '@/lib/albums'
+import { StatusBar, NavBar, TabBar, AlertView, ShuffleIcon } from '@/components/ui'
 import ImportScreen from '@/components/ImportScreen'
 import AlbumList from '@/components/AlbumList'
 import AlbumDetail from '@/components/AlbumDetail'
@@ -26,6 +26,12 @@ function savedNanoColor() {
   return 'silver'
 }
 
+// iOS only delivers motion events after the page asks from a tap.
+function requestMotionAccess() {
+  const DM = window.DeviceMotionEvent
+  if (typeof DM?.requestPermission === 'function') DM.requestPermission().catch(() => {})
+}
+
 export default function Home() {
   const [collection, setCollection] = useState([])
   const [tab, setTab] = useState('albums')
@@ -34,6 +40,8 @@ export default function Home() {
   const [flowIndex, setFlowIndex] = useState(0)
   const [nanoColor, setNanoColor] = useState(() => typeof window === 'undefined' ? 'silver' : savedNanoColor())
   const [alert, setAlert] = useState(null)
+  const [shufflePool, setShufflePool] = useState(null)
+  const recentPicks = useRef([])
 
   const albums = useMemo(() => sortAlbums(collection), [collection])
   const flowAt = Math.min(flowIndex, Math.max(0, albums.length - 1))
@@ -75,8 +83,53 @@ export default function Home() {
   function switchTab(id) {
     setTab(id)
     setDetail(null)
+    setShufflePool(null)
     setEditing(false)
   }
+
+  function openAlbum(album) {
+    setShufflePool(null)
+    setDetail(album)
+  }
+
+  function nextPick(pool) {
+    const pick = pickRandom(pool, recentPicks.current)
+    if (pick) recentPicks.current = [pick.id, ...recentPicks.current].slice(0, 50)
+    return pick
+  }
+
+  function shuffle(pool) {
+    const pick = nextPick(pool)
+    if (!pick) return
+    setShufflePool(pool)
+    setDetail(pick)
+  }
+
+  // Shake to shuffle, like the 4th-generation iPod nano.
+  const onShake = useEffectEvent(() => {
+    if (tab !== 'import' && !alert && albums.length > 1) shuffle(albums)
+  })
+  useEffect(() => {
+    // A shake is a sharp change (> 15 m/s²) on at least two axes between
+    // readings 100ms apart; one-axis bumps like setting the phone down don't count.
+    let prev = null
+    let lastShake = 0
+    function onMotion(e) {
+      const a = e.accelerationIncludingGravity
+      const now = Date.now()
+      if (!a || a.x == null || (prev && now - prev.t < 100)) return
+      if (prev) {
+        const jolted = [a.x - prev.x, a.y - prev.y, a.z - prev.z].filter(d => Math.abs(d) > 15).length
+        if (jolted >= 2 && now - lastShake > 1500) {
+          lastShake = now
+          onShake()
+        }
+      }
+      prev = { x: a.x, y: a.y, z: a.z, t: now }
+    }
+    window.addEventListener('devicemotion', onMotion)
+    return () => window.removeEventListener('devicemotion', onMotion)
+  }, [])
 
   function chooseNanoColor(c) {
     setNanoColor(c)
@@ -96,6 +149,7 @@ export default function Home() {
       }
     }
     setCollection(c => c.filter(r => r.id !== album.id))
+    setShufflePool(p => p?.filter(r => r.id !== album.id) ?? null)
     setDetail(d => (d?.id === album.id ? null : d))
   }
 
@@ -111,7 +165,10 @@ export default function Home() {
       <NavBar
         variant="black"
         title="Now Playing"
-        left={<button className="bar-btn back" onClick={() => setDetail(null)}>{tab === 'coverflow' ? 'Cover Flow' : 'Albums'}</button>}
+        left={<button className="bar-btn back" onClick={() => { setDetail(null); setShufflePool(null) }}>{tab === 'coverflow' ? 'Cover Flow' : 'Albums'}</button>}
+        right={shufflePool?.length > 1 && (
+          <button className="bar-btn" onClick={() => shuffle(shufflePool)}><ShuffleIcon color="#fff" size={16} />Again</button>
+        )}
       />
     )
   } else if (tab !== 'coverflow') {
@@ -136,7 +193,13 @@ export default function Home() {
         ) : tab === 'import' ? (
           <ImportScreen onAdded={handleAdded} ask={ask} />
         ) : tab === 'albums' ? (
-          <AlbumList albums={albums} editing={editing} onOpen={setDetail} onDelete={a => deleteRecord(a, { confirm: false })} />
+          <AlbumList
+            albums={albums}
+            editing={editing}
+            onOpen={openAlbum}
+            onDelete={a => deleteRecord(a, { confirm: false })}
+            onShuffle={pool => { requestMotionAccess(); shuffle(pool) }}
+          />
         ) : (
           <Nano
             albums={albums}
@@ -144,8 +207,9 @@ export default function Home() {
             setIndex={setFlowIndex}
             color={nanoColor}
             setColor={chooseNanoColor}
-            onSelect={setDetail}
+            onSelect={openAlbum}
             onMenu={() => switchTab('albums')}
+            onShuffle={() => nextPick(albums)}
           />
         )}
         <TabBar tabs={TABS} active={tab} onChange={switchTab} />

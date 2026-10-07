@@ -78,6 +78,15 @@ export function Chevron({ color = '#8c8c8c' }) {
   )
 }
 
+export function ShuffleIcon({ color = 'currentColor', size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 5h3c3 0 4 10 7 10h5M2 15h3c1.4 0 2.3-2 3-4M11.5 7c.7-1.2 1.4-2 2.5-2h3" />
+      <path d="M15 2.5L17.5 5 15 7.5M15 12.5l2.5 2.5-2.5 2.5" />
+    </svg>
+  )
+}
+
 export function Spinner({ light }) {
   return (
     <span className={`spinner${light ? ' light' : ''}`} aria-label="Loading">

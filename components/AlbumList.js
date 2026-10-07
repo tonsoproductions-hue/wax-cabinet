@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
-import { Chevron, CoverArt } from '@/components/ui'
+import { Chevron, CoverArt, ShuffleIcon } from '@/components/ui'
 import { sortKey } from '@/lib/albums'
 
 function sectionLetter(album) {
@@ -8,7 +8,7 @@ function sectionLetter(album) {
   return c >= 'A' && c <= 'Z' ? c : '#'
 }
 
-export default function AlbumList({ albums, editing, onOpen, onDelete }) {
+export default function AlbumList({ albums, editing, onOpen, onDelete, onShuffle }) {
   const [search, setSearch] = useState('')
   const [genre, setGenre] = useState('All')
   const [armed, setArmed] = useState(null)
@@ -62,6 +62,13 @@ export default function AlbumList({ albums, editing, onOpen, onDelete }) {
           </div>
         )}
 
+        {visible.length > 1 && !editing && (
+          <button className="shuffle-row" onClick={() => onShuffle(visible)}>
+            Shuffle{genre !== 'All' ? ` ${genre}` : q ? ' Results' : ''}
+            <ShuffleIcon color="#385487" />
+          </button>
+        )}
+
         {sections.map(s => (
           <section key={s.letter}>
             <div className="section-header" data-letter={s.letter}>{s.letter}</div>
@@ -92,6 +99,7 @@ export default function AlbumList({ albums, editing, onOpen, onDelete }) {
         <div className="list-footer">
           {albums.length} {albums.length === 1 ? 'Album' : 'Albums'}
           <small>{artistCount} {artistCount === 1 ? 'Artist' : 'Artists'}{totalValue > 0 ? ` · $${totalValue.toFixed(0)} est. value` : ''}</small>
+          {albums.length > 1 && <small className="shake-tip">Shake your phone to shuffle</small>}
         </div>
       </div>
       {showIndex && (

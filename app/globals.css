@@ -215,7 +215,7 @@ button { cursor: pointer; }
 /* ── Scroll areas & pinstripes ───────────────────────────────── */
 
 .scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-.scroll::-webkit-scrollbar { display: none; }
+.scroll::-webkit-scrollbar, .nano-stage::-webkit-scrollbar { display: none; }
 .pinstripes { background: var(--pinstripes); padding-bottom: 24px; }
 
 .group-label {
@@ -428,6 +428,21 @@ button.cell { padding-top: 6px; padding-bottom: 6px; }
   opacity: .96;
 }
 
+.shuffle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; height: 46px; padding: 0 14px;
+  border: none; border-bottom: 1px solid #e0e0e0;
+  background: #fff;
+  font-size: 17px; font-weight: bold; color: #000; text-align: left;
+}
+/* Leave room for the A–Z index on the right. */
+.albums.indexed .shuffle-row { padding-right: 26px; }
+.shuffle-row:active { background: var(--ios-gloss-blue); color: #fff; }
+.shuffle-row:active svg { stroke: #fff; }
+.shake-tip { display: none !important; }
+@media (hover: none) and (pointer: coarse) { .shake-tip { display: block !important; } }
+.bar-btn svg { vertical-align: -4px; margin-right: 4px; }
+
 .album-row {
   display: flex; align-items: center; gap: 10px;
   width: 100%;
@@ -524,7 +539,7 @@ button.cell { padding-top: 6px; padding-bottom: 6px; }
 /* ── Cover Flow tab: iPod nano ───────────────────────────────── */
 
 .nano-stage {
-  flex: 1; min-height: 0; overflow-y: auto;
+  flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none;
   background:
     radial-gradient(ellipse at 50% 35%, rgba(255,255,255,.18), transparent 60%),
     linear-gradient(#5d6670, #2a2f36);

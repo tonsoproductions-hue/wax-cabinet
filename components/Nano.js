@@ -183,13 +183,14 @@ function ClickWheel({ onStep, onMenu, onPrev, onNext, onPlay, onCenter }) {
   )
 }
 
-export default function Nano({ albums, index, setIndex, color, setColor, onSelect, onMenu }) {
+export default function Nano({ albums, index, setIndex, color, setColor, onSelect, onMenu, onShuffle }) {
   const step = dir => {
     const next = Math.max(0, Math.min(albums.length - 1, index + dir))
     if (next !== index) { setIndex(next); click() }
   }
   const shuffle = () => {
-    if (albums.length > 1) { setIndex(Math.floor(Math.random() * albums.length)); click() }
+    const pick = onShuffle()
+    if (pick) { setIndex(albums.indexOf(pick)); click() }
   }
   const current = albums[index]
 
