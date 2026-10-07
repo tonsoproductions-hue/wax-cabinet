@@ -7,6 +7,8 @@ const DAILY_LIMIT = Number(process.env.IDENTIFY_DAILY_LIMIT) || 40
 // The app resizes covers to 800px JPEGs (~150 KB); anything far bigger is a mistake or abuse.
 const MAX_BASE64_LENGTH = 3_000_000
 const MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+// Hard ceiling on this function; lib/vision.js normally finishes within ~35s.
+export const maxDuration = 60
 
 export async function POST(request) {
   // Each call costs money, so only signed-in users can identify covers.

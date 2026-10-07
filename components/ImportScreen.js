@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { supabase, authHeaders, apiUrl } from '@/lib/supabase'
 import { GENRES, CONDITIONS } from '@/lib/genres'
 import { Chevron, Spinner } from '@/components/ui'
@@ -17,6 +17,11 @@ const TEXT_FIELDS = [
   ['Value ($)', 'market_value', 'decimal'],
   ['Discogs ID', 'discogs_id', 'numeric'],
 ]
+
+// The server gives up on Claude within ~35s and on Discogs within 10s; these
+// are the app's own backstops.
+const CLAUDE_TIMEOUT_MS = 45_000
+const DISCOGS_TIMEOUT_MS = 15_000
 
 export default function ImportScreen({ user, onAdded, ask }) {
   const [imageData, setImageData] = useState(null)
@@ -74,6 +79,27 @@ export default function ImportScreen({ user, onAdded, ask }) {
     reader.readAsDataURL(file)
   }
 
+  // One request at a time: a new scan or search, or Start Over, cancels the
+  // previous one, and late answers from a cancelled request are ignored. Each
+  // request also gives up after a time limit so the screen can never hang.
+  const active = useRef(null)
+
+  function startRequest(ms) {
+    active.current?.controller.abort()
+    const req = { controller: new AbortController(), timedOut: false }
+    req.timer = setTimeout(() => { req.timedOut = true; req.controller.abort() }, ms)
+    active.current = req
+    return req
+  }
+  const endRequest = req => clearTimeout(req.timer)
+  const isStale = req => active.current !== req
+  function cancelRequest() {
+    if (!active.current) return
+    endRequest(active.current)
+    active.current.controller.abort()
+    active.current = null
+  }
+
   function finishProcessing(status) {
     setProcessing(false)
     setProgress(100)
@@ -83,6 +109,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
   // retry: the owner says the last answer was wrong (or added a hint), so the
   // server skips to a stronger model and avoids the rejected answers.
   async function analyzeImage(base64, mediaType, { retry = false, hint: withHint, rejected: skip } = {}) {
+    const req = startRequest(CLAUDE_TIMEOUT_MS)
     setProcessing(true)
     setProcStatus(retry ? 'Claude is taking a closer look…' : 'Claude is reading the cover…')
     setProgress(25)
@@ -90,9 +117,12 @@ export default function ImportScreen({ user, onAdded, ask }) {
       const resp = await fetch(apiUrl('/api/claude'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-        body: JSON.stringify({ base64, mediaType, retry, hint: withHint || undefined, rejected: skip?.length ? skip : undefined })
+        body: JSON.stringify({ base64, mediaType, retry, hint: withHint || undefined, rejected: skip?.length ? skip : undefined }),
+        signal: req.controller.signal,
       })
       const { error, album, identifiedBy: model, repeated } = await resp.json()
+      endRequest(req)
+      if (isStale(req)) return
       if (error) {
         // Server messages (daily limit, photo too large) are written for people.
         finishProcessing(resp.status === 429 || resp.status === 413 ? error : 'Couldn’t identify it. Fill in the details below.')
@@ -116,8 +146,12 @@ export default function ImportScreen({ user, onAdded, ask }) {
       setProgress(55)
       await searchDiscogs(query)
     } catch (err) {
+      endRequest(req)
+      if (isStale(req)) return
       console.error('analyzeImage failed:', err)
-      finishProcessing('Couldn’t identify it. Fill in the details below.')
+      finishProcessing(req.timedOut
+        ? 'Claude took too long. Try again, add a hint or search Discogs below.'
+        : 'Couldn’t identify it. Fill in the details below.')
     }
   }
 
@@ -142,19 +176,26 @@ export default function ImportScreen({ user, onAdded, ask }) {
   }
 
   async function searchDiscogs(q) {
+    const req = startRequest(DISCOGS_TIMEOUT_MS)
     setProcessing(true)
     setProcStatus('Searching Discogs…')
     try {
-      const resp = await fetch(apiUrl(`/api/discogs?q=${encodeURIComponent(q)}`))
+      const resp = await fetch(apiUrl(`/api/discogs?q=${encodeURIComponent(q)}`), { signal: req.controller.signal })
       const data = await resp.json()
+      endRequest(req)
+      if (isStale(req)) return
       if (data.error) throw new Error(data.error)
       const results = data.results?.slice(0, 4) || []
       setDiscogsResults(results)
       finishProcessing(results.length > 0 ? 'Choose your pressing below.' : 'No Discogs matches. Fill in the details below.')
     } catch (err) {
+      endRequest(req)
+      if (isStale(req)) return
       console.error('searchDiscogs failed:', err)
       setDiscogsResults([])
-      finishProcessing('Discogs search failed. Fill in the details below.')
+      finishProcessing(req.timedOut
+        ? 'Discogs took too long. Try the search again or fill in the details below.'
+        : 'Discogs search failed. Fill in the details below.')
     }
   }
 
@@ -162,14 +203,19 @@ export default function ImportScreen({ user, onAdded, ask }) {
     setSelectedDiscogs(result.id)
     setForm(f => ({ ...f, discogs_id: String(result.id) }))
     setProcStatus('Loading release details…')
+    const req = startRequest(DISCOGS_TIMEOUT_MS)
     let d
     try {
-      const resp = await fetch(apiUrl(`/api/discogs?id=${result.id}`))
+      const resp = await fetch(apiUrl(`/api/discogs?id=${result.id}`), { signal: req.controller.signal })
       d = await resp.json()
+      endRequest(req)
+      if (isStale(req)) return
       if (d.error) throw new Error(d.error)
     } catch (err) {
+      endRequest(req)
+      if (isStale(req)) return
       console.error('pickDiscogs failed:', err)
-      setProcStatus('Couldn’t load release details.')
+      setProcStatus(req.timedOut ? 'Discogs took too long. Tap the pressing to try again.' : 'Couldn’t load release details.')
       return
     }
     setForm(f => ({
@@ -186,6 +232,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
   }
 
   function resetImport() {
+    cancelRequest()
     setImageData(null)
     setImageFile(null)
     setDiscogsResults([])
@@ -280,36 +327,6 @@ export default function ImportScreen({ user, onAdded, ask }) {
           <div className="button-row">
             <button className="gloss-btn" onClick={resetImport}>Start Over</button>
           </div>
-
-          {!processing && (
-            <>
-              <div className="group-label">Not Right?</div>
-              <div className="group">
-                <button className="cell" onClick={askAgain}>
-                  <span className="grow">
-                    Wrong Album — Ask Again
-                    <small>
-                      {rejected.length
-                        ? `A stronger model looks again, skipping ${rejected.length} wrong ${rejected.length === 1 ? 'answer' : 'answers'}`
-                        : 'A stronger model takes another look'}
-                    </small>
-                  </span>
-                  <Chevron />
-                </button>
-                <form className="cell field compose" onSubmit={askWithHint}>
-                  <span className="field-label">Hint</span>
-                  <input value={hint} onChange={e => setHint(e.target.value)} maxLength={300} enterKeyHint="send" placeholder="e.g. Blue Note, 1965" />
-                  <button className="cell-btn" type="submit" disabled={!hint.trim()}>Ask</button>
-                </form>
-                <form className="cell field compose" onSubmit={searchDiscogsYourself}>
-                  <span className="field-label">Discogs</span>
-                  <input type="search" value={discogsQuery} onChange={e => setDiscogsQuery(e.target.value)} enterKeyHint="search" placeholder="Artist, title or catalogue no." />
-                  <button className="cell-btn" type="submit" disabled={!discogsQuery.trim()}>Search</button>
-                </form>
-              </div>
-              <div className="group-footer">Ask Again and Hint use a stronger model. Picking a Discogs pressing below fills in its details.</div>
-            </>
-          )}
         </>
       )}
 
@@ -329,6 +346,36 @@ export default function ImportScreen({ user, onAdded, ask }) {
               </button>
             ))}
           </div>
+        </>
+      )}
+
+      {imageData && !processing && (
+        <>
+          <div className="group-label">Not Right?</div>
+          <div className="group">
+            <button className="cell" onClick={askAgain}>
+              <span className="grow">
+                Wrong Album — Ask Again
+                <small>
+                  {rejected.length
+                    ? `A stronger model looks again, skipping ${rejected.length} wrong ${rejected.length === 1 ? 'answer' : 'answers'}`
+                    : 'A stronger model takes another look'}
+                </small>
+              </span>
+              <Chevron />
+            </button>
+            <form className="cell field compose" onSubmit={askWithHint}>
+              <span className="field-label">Hint</span>
+              <input value={hint} onChange={e => setHint(e.target.value)} maxLength={300} enterKeyHint="send" placeholder="e.g. Blue Note, 1965" />
+              <button className="cell-btn" type="submit" disabled={!hint.trim()}>Ask</button>
+            </form>
+            <form className="cell field compose" onSubmit={searchDiscogsYourself}>
+              <span className="field-label">Discogs</span>
+              <input type="search" value={discogsQuery} onChange={e => setDiscogsQuery(e.target.value)} enterKeyHint="search" placeholder="Artist, title or catalogue no." />
+              <button className="cell-btn" type="submit" disabled={!discogsQuery.trim()}>Search</button>
+            </form>
+          </div>
+          <div className="group-footer">Ask Again and Hint use a stronger model. Picking a Discogs pressing above fills in its details.</div>
         </>
       )}
 
