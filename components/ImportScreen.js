@@ -30,6 +30,12 @@ export default function ImportScreen({ user, onAdded, ask }) {
   const [saving, setSaving] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [identifiedBy, setIdentifiedBy] = useState(null)
+  // Fixing a wrong match: answers the owner rejected, their hint for Claude,
+  // and a free-text Discogs search.
+  const [rejected, setRejected] = useState([])
+  const [hint, setHint] = useState('')
+  const [discogsQuery, setDiscogsQuery] = useState('')
 
   function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) return
@@ -56,6 +62,9 @@ export default function ImportScreen({ user, onAdded, ask }) {
         setDiscogsResults([])
         setSelectedDiscogs(null)
         setTracklist([])
+        setRejected([])
+        setHint('')
+        setDiscogsQuery('')
         await analyzeImage(resized.split(',')[1], 'image/jpeg')
       }
       img.src = e.target.result
@@ -69,29 +78,61 @@ export default function ImportScreen({ user, onAdded, ask }) {
     setProcStatus(status)
   }
 
-  async function analyzeImage(base64, mediaType) {
+  // retry: the owner says the last answer was wrong (or added a hint), so the
+  // server skips to a stronger model and avoids the rejected answers.
+  async function analyzeImage(base64, mediaType, { retry = false, hint: withHint, rejected: skip } = {}) {
     setProcessing(true)
-    setProcStatus('Claude is reading the cover…')
+    setProcStatus(retry ? 'Claude is taking a closer look…' : 'Claude is reading the cover…')
     setProgress(25)
     try {
       const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-        body: JSON.stringify({ base64, mediaType })
+        body: JSON.stringify({ base64, mediaType, retry, hint: withHint || undefined, rejected: skip?.length ? skip : undefined })
       })
-      const { error, ...album } = await resp.json()
+      const { error, identifiedBy: model, repeated, ...album } = await resp.json()
       if (error) throw new Error(error)
-      setForm(f => ({ ...f, ...album }))
+      setIdentifiedBy(model ?? null)
       if (!album.artist && !album.title) {
-        finishProcessing('Couldn’t read the cover. Fill in the details below.')
+        finishProcessing(retry ? 'Still couldn’t read it. Try a hint or search Discogs below.' : 'Couldn’t read the cover. Fill in the details below.')
         return
       }
+      if (repeated) {
+        finishProcessing(`Claude still thinks this is ${album.title}. Add a hint or search Discogs below.`)
+        return
+      }
+      // A new answer replaces the old pick, so drop its Discogs id, price and tracks.
+      setForm(f => ({ ...f, ...album, discogs_id: '', market_value: '' }))
+      setSelectedDiscogs(null)
+      setTracklist([])
+      const query = `${album.artist} ${album.title}`.trim()
+      setDiscogsQuery(query)
       setProgress(55)
-      await searchDiscogs(`${album.artist} ${album.title}`)
+      await searchDiscogs(query)
     } catch (err) {
       console.error('analyzeImage failed:', err)
       finishProcessing('Couldn’t identify it. Fill in the details below.')
     }
+  }
+
+  function askAgain() {
+    const guess = [form.artist, form.title].filter(Boolean).join(' — ')
+    const next = guess && !rejected.includes(guess) ? [...rejected, guess] : rejected
+    setRejected(next)
+    analyzeImage(imageData.split(',')[1], 'image/jpeg', { retry: true, hint: hint.trim(), rejected: next })
+  }
+
+  function askWithHint(e) {
+    e.preventDefault()
+    if (!hint.trim()) return
+    analyzeImage(imageData.split(',')[1], 'image/jpeg', { retry: true, hint: hint.trim(), rejected })
+  }
+
+  function searchDiscogsYourself(e) {
+    e.preventDefault()
+    if (!discogsQuery.trim()) return
+    setSelectedDiscogs(null)
+    searchDiscogs(discogsQuery.trim())
   }
 
   async function searchDiscogs(q) {
@@ -147,6 +188,10 @@ export default function ImportScreen({ user, onAdded, ask }) {
     setProcessing(false)
     setProgress(0)
     setProcStatus('')
+    setIdentifiedBy(null)
+    setRejected([])
+    setHint('')
+    setDiscogsQuery('')
     setForm(EMPTY_FORM)
   }
 
@@ -220,6 +265,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
               <div className="grow">
                 {processing ? 'Identifying…' : 'Identified'}
                 <small>{procStatus}</small>
+                {identifiedBy && !processing && <small>Read by {identifiedBy}</small>}
                 <div className="progress"><i style={{ width: progress + '%' }} /></div>
               </div>
               {processing && <Spinner />}
@@ -227,9 +273,37 @@ export default function ImportScreen({ user, onAdded, ask }) {
           </div>
           <div className="button-row">
             <button className="gloss-btn" onClick={resetImport}>Start Over</button>
-            <button className="gloss-btn" onClick={() => { const q = `${form.artist} ${form.title}`; if (q.trim().length > 1) searchDiscogs(q) }}>Search Discogs</button>
-            <button className="gloss-btn" onClick={() => analyzeImage(imageData.split(',')[1], 'image/jpeg')}>Ask Claude</button>
           </div>
+
+          {!processing && (
+            <>
+              <div className="group-label">Not Right?</div>
+              <div className="group">
+                <button className="cell" onClick={askAgain}>
+                  <span className="grow">
+                    Wrong Album — Ask Again
+                    <small>
+                      {rejected.length
+                        ? `A stronger model looks again, skipping ${rejected.length} wrong ${rejected.length === 1 ? 'answer' : 'answers'}`
+                        : 'A stronger model takes another look'}
+                    </small>
+                  </span>
+                  <Chevron />
+                </button>
+                <form className="cell field compose" onSubmit={askWithHint}>
+                  <span className="field-label">Hint</span>
+                  <input value={hint} onChange={e => setHint(e.target.value)} maxLength={300} enterKeyHint="send" placeholder="e.g. Blue Note, 1965" />
+                  <button className="cell-btn" type="submit" disabled={!hint.trim()}>Ask</button>
+                </form>
+                <form className="cell field compose" onSubmit={searchDiscogsYourself}>
+                  <span className="field-label">Discogs</span>
+                  <input type="search" value={discogsQuery} onChange={e => setDiscogsQuery(e.target.value)} enterKeyHint="search" placeholder="Artist, title or catalogue no." />
+                  <button className="cell-btn" type="submit" disabled={!discogsQuery.trim()}>Search</button>
+                </form>
+              </div>
+              <div className="group-footer">Ask Again and Hint use a stronger model. Picking a Discogs pressing below fills in its details.</div>
+            </>
+          )}
         </>
       )}
 

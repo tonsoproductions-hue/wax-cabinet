@@ -307,6 +307,16 @@ button.cell { padding-top: 6px; padding-bottom: 6px; }
 }
 .field input::placeholder { color: #b3b3b3; }
 
+.field.compose .field-label { width: 72px; }
+.field.compose input { text-align: left; font-size: 15px; color: #000; }
+.cell-btn {
+  flex: 0 0 auto; height: 30px; padding: 0 12px;
+  border: 1px solid #8f8f8f; border-radius: 6px;
+  background: linear-gradient(#fff 0%, #f0f0f0 50%, #e2e2e2 50%, #ececec 100%);
+  color: #3a3a3a; font-size: 13px; font-weight: bold; text-shadow: 0 1px 0 #fff;
+}
+.cell-btn:not(:disabled):active { background: linear-gradient(#d8d8d8, #ececec); }
+.cell-btn:disabled { color: #b0b0b0; }
 .track-cell { font-size: 15px; min-height: 36px; }
 .track-cell .pos { width: 30px; color: #7f7f7f; font-weight: normal; font-size: 13px; flex: 0 0 auto; }
 .track-cell .dur { color: #7f7f7f; font-weight: normal; font-size: 13px; }
