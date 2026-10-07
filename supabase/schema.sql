@@ -1,7 +1,7 @@
 -- Wax Cabinet database setup. Paste into the Supabase SQL editor for a fresh project.
 
 create table if not exists public.vinyl_records (
-  id            bigint generated always as identity primary key,
+  id            uuid primary key default gen_random_uuid(),
   created_at    timestamptz not null default now(),
   artist        text not null default '',
   title         text not null default '',

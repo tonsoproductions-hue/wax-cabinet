@@ -2,9 +2,10 @@ import Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { z } from 'zod'
 import { GENRES } from '@/lib/genres'
+import { MODELS } from '@/lib/models'
 
-const CLAUDE_MODEL = 'claude-opus-5-5'
-const GEMINI_MODEL = 'gemini-3.5-flash'
+const CLAUDE_MODEL = MODELS.claude.id
+const GEMINI_MODEL = MODELS.gemini.id
 
 const AlbumSchema = z.object({
   artist: z.string(),
