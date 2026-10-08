@@ -107,7 +107,7 @@ export default function Home() {
       .then(setCollection)
       .catch(async err => {
         console.error('Loading collection failed:', err)
-        const choice = await ask('Cannot Connect', 'Wax Cabinet couldn’t reach its database. You can browse a demo crate from Discogs instead.', ['OK', 'Show Demo'])
+        const choice = await ask('Cannot Connect', 'Vinyl Crate couldn’t reach its database. You can browse a demo crate from Discogs instead.', ['OK', 'Show Demo'])
         if (choice === 'Show Demo') showDemo()
       })
   }, [ask, showDemo, demo, sharedOwner])

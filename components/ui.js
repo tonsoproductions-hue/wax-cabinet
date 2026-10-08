@@ -13,7 +13,7 @@ export function StatusBar() {
     <div className="status-bar">
       <span className="status-carrier">
         <span className="signal">{[3, 5, 7, 9, 10].map(h => <i key={h} style={{ height: h }} />)}</span>
-        Wax
+        Vinyl
       </span>
       <span>{time}</span>
       <span className="status-right"><span className="battery"><i /></span></span>

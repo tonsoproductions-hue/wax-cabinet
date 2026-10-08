@@ -19,7 +19,7 @@ function SignInForm({ onBack, ask }) {
     setSending(false)
     if (error) {
       const unknown = /signups? not allowed|not found/i.test(error.message)
-      ask('Couldn’t Send Link', unknown ? 'That email isn’t set up for Wax Cabinet yet.' : error.message)
+      ask('Couldn’t Send Link', unknown ? 'That email isn’t set up for Vinyl Crate yet.' : error.message)
       return
     }
     await ask('Check Your Email', `We sent a sign-in link to ${email.trim()}. Open it on this device to sign in.`)
@@ -63,7 +63,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
   async function share() {
     const url = shareUrl(shareOwnerId, shareGenre)
     const what = shareGenre === 'All' ? 'vinyl collection' : `${shareGenre} records`
-    const result = await shareLink({ title: 'Wax Cabinet', text: `Browse my ${what} on Wax Cabinet`, url })
+    const result = await shareLink({ title: 'Vinyl Crate', text: `Browse my ${what} on Vinyl Crate`, url })
     if (result === 'copied') ask('Link Copied', url)
     else if (result === 'failed') ask('Share Link', url)
   }
@@ -127,7 +127,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
         <div className="group-footer">The link opens just your Albums list. Anyone with it can browse and shuffle, but can’t change anything.</div>
 
         <div className="group-footer" style={{ marginTop: 8 }}>
-          Wax Cabinet · Covers read by Claude · Pressings from Discogs
+          Vinyl Crate · Covers read by Claude · Pressings from Discogs
         </div>
       </div>
     </>

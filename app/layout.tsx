@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Wax Cabinet",
+  title: "Vinyl Crate",
   description: "A vinyl collection registry: photograph a cover, match the pressing on Discogs, file it away.",
 };
 

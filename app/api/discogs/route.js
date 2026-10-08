@@ -15,7 +15,7 @@ export async function GET(request) {
     resp = await fetch(url, {
       headers: {
         Authorization: `Discogs token=${process.env.DISCOGS_TOKEN}`,
-        'User-Agent': 'WaxCabinet/1.0'
+        'User-Agent': 'VinylCrate/1.0'
       },
       // Don't let a slow Discogs keep the Import screen waiting.
       signal: AbortSignal.timeout(10_000),

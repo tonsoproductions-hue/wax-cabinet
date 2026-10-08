@@ -41,7 +41,7 @@ export default function AlbumList({ albums, initialGenre, editing, onOpen, onDel
       <div className="scroll albums">
         <div className="empty">
           <strong>No Albums</strong>
-          <small>Add a record from the Import tab. Photograph the cover and Wax Cabinet looks up the pressing for you.</small>
+          <small>Add a record from the Import tab. Photograph the cover and Vinyl Crate looks up the pressing for you.</small>
         </div>
       </div>
     )
