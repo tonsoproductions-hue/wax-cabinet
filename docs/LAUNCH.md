@@ -7,7 +7,7 @@ done; the steps below are the accounts, dashboards and builds that need you.
 ## How it fits together
 
 ```
- iPhone app (Capacitor)               Website (wax-cabinet.vercel.app)
+ iPhone app (Capacitor)               Website (vinylcrate.vercel.app)
  ├─ static bundle in the app          ├─ same pages, served by Vercel
  └─ calls the API over HTTPS ──┐      └─ /privacy, /support, share links
                                ▼
@@ -63,8 +63,8 @@ API files are named `route.server.js`; the iOS build leaves them out (see
    It adds profiles (with the Public Collection switch), the scan log and an index. Safe to re-run.
 2. **Open sign-ups.** Authentication → Sign In / Providers → Email → turn **Allow new users to sign up** back on.
 3. **Redirect URLs.** Authentication → URL Configuration → add
-   `vinylcrate://auth-callback` (the app) alongside `http://localhost:3000/**`.
-   Keep the Site URL as the website.
+   `vinylcrate://auth-callback` (the app) and `https://vinylcrate.vercel.app/**` alongside
+   `http://localhost:3000/**`. Set the Site URL to `https://vinylcrate.vercel.app`.
 4. **Put the code in the email.** Authentication → Emails → *Magic Link* template: add a line such as
    `<p>Or enter this code in the app: <strong>{{ .Token }}</strong></p>`.
 5. **Custom email sender (required before launch).** Supabase's built-in email
@@ -91,7 +91,7 @@ Project → Settings → Environment Variables (Production), using `.env.example
 | `SUPABASE_SERVICE_ROLE_KEY` | from Supabase step 7 |
 | `VISION_MODELS` | `claude-haiku-5-5,claude-sonnet-5-5` |
 | `IDENTIFY_DAILY_LIMIT` | `40` |
-| `NEXT_PUBLIC_SITE_URL` | `https://wax-cabinet.vercel.app` (or your domain) |
+| `NEXT_PUBLIC_SITE_URL` | `https://vinylcrate.vercel.app` (or your domain) |
 | `NEXT_PUBLIC_FEATURED_OWNER` | your user id (Supabase → Authentication → Users), so the website still opens on your crate |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | a support address you're happy to publish |
 | `GEMINI_API_KEY` | delete, no longer used |
@@ -138,7 +138,7 @@ Then redeploy. Also:
 2. App Store Connect → Apps → **+** → New App: iOS, name *Vinyl Crate* (pick an
    alternative if taken), bundle id `com.tonsoproductions.vinylcrate`, SKU `vinylcrate`.
 3. **App information:** category Music (secondary: Lifestyle). Privacy Policy URL
-   `https://wax-cabinet.vercel.app/privacy/`; Support URL `…/support/`.
+   `https://vinylcrate.vercel.app/privacy/`; Support URL `…/support/`.
 4. **App Privacy** (data types, all *linked to the user*, *not used for tracking*,
    purpose *App Functionality*): Contact Info → Email Address; User Content →
    Photos or Videos; User Content → Other User Content (collection); Usage Data →

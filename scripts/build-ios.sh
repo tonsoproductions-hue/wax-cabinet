@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 export BUILD_TARGET=ios
-export NEXT_PUBLIC_API_BASE="${NEXT_PUBLIC_API_BASE:-https://wax-cabinet.vercel.app}"
+export NEXT_PUBLIC_API_BASE="${NEXT_PUBLIC_API_BASE:-https://vinylcrate.vercel.app}"
 export NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-$NEXT_PUBLIC_API_BASE}"
 # The app opens on its welcome screen, not the website's featured crate.
 export NEXT_PUBLIC_FEATURED_OWNER=

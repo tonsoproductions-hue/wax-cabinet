@@ -29,8 +29,8 @@ jobs:
         run: npx next build
         env:
           BUILD_TARGET: ios
-          NEXT_PUBLIC_API_BASE: https://wax-cabinet.vercel.app
-          NEXT_PUBLIC_SITE_URL: https://wax-cabinet.vercel.app
+          NEXT_PUBLIC_API_BASE: https://vinylcrate.vercel.app
+          NEXT_PUBLIC_SITE_URL: https://vinylcrate.vercel.app
       - name: Check the iOS bundle has no server code
         run: |
           test -f out/index.html

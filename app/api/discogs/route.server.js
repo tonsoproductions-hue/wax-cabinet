@@ -23,7 +23,7 @@ export async function GET(request) {
     resp = await fetch(url, {
       headers: {
         Authorization: `Discogs token=${process.env.DISCOGS_TOKEN}`,
-        'User-Agent': 'VinylCrate/1.0 +https://wax-cabinet.vercel.app'
+        'User-Agent': 'VinylCrate/1.0 +https://vinylcrate.vercel.app'
       },
       // Don't let a slow Discogs keep the Import screen waiting.
       signal: AbortSignal.timeout(10_000),
