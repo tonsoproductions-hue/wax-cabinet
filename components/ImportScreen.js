@@ -23,6 +23,16 @@ const TEXT_FIELDS = [
 const CLAUDE_TIMEOUT_MS = 45_000
 const DISCOGS_TIMEOUT_MS = 15_000
 
+// The image drawn on a canvas no bigger than maxSize on its longest side.
+function scaledCanvas(img, maxSize) {
+  const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(img.width * scale)
+  canvas.height = Math.round(img.height * scale)
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+  return canvas
+}
+
 export default function ImportScreen({ user, onAdded, ask }) {
   const [imageData, setImageData] = useState(null)
   const [imageFile, setImageFile] = useState(null)
@@ -51,26 +61,22 @@ export default function ImportScreen({ user, onAdded, ask }) {
 
   function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) return
-    setImageFile(file)
-    setTextQuery('')
-    setDiscogsCover(null)
+    const cantOpen = () => ask('Can’t Open Photo', 'That photo’s format isn’t supported here. Try a JPEG or PNG.')
     const reader = new FileReader()
+    reader.onerror = cantOpen
     reader.onload = (e) => {
-      // Resize before sending to the vision model
       const img = new Image()
+      // e.g. a HEIC photo dropped into a browser that can't decode it.
+      img.onerror = cantOpen
       img.onload = async () => {
-        const canvas = document.createElement('canvas')
-        const maxSize = 800
-        let w = img.width
-        let h = img.height
-        if (w > maxSize || h > maxSize) {
-          if (w > h) { h = (h / w) * maxSize; w = maxSize }
-          else { w = (w / h) * maxSize; h = maxSize }
-        }
-        canvas.width = w
-        canvas.height = h
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
-        const resized = canvas.toDataURL('image/jpeg', 0.85)
+        // Claude gets a small copy. The saved cover is larger but still a
+        // fraction of a full phone photo, which can be over Vercel's 4.5MB
+        // request limit for /api/upload.
+        const resized = scaledCanvas(img, 800).toDataURL('image/jpeg', 0.85)
+        const cover = await new Promise(resolve => scaledCanvas(img, 1200).toBlob(resolve, 'image/jpeg', 0.85))
+        setImageFile(new File([cover], `${file.name.replace(/\.[^.]*$/, '') || 'cover'}.jpg`, { type: 'image/jpeg' }))
+        setTextQuery('')
+        setDiscogsCover(null)
         setImageData(resized)
         setProgress(10)
         setDiscogsResults([])

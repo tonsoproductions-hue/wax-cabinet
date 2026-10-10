@@ -181,9 +181,11 @@ export default function Home() {
       if (choice !== 'Remove') return
     }
     if (!album.demo) {
-      const { error } = await supabase.from('vinyl_records').delete().eq('id', album.id)
-      if (error) {
-        ask('Couldn’t Remove Album', error.message)
+      // Row security skips other owners' records without an error, so check a
+      // row really went; otherwise the album would come back on the next load.
+      const { data, error } = await supabase.from('vinyl_records').delete().eq('id', album.id).select('id')
+      if (error || !data?.length) {
+        ask('Couldn’t Remove Album', error?.message ?? 'You can only remove records you added.')
         return
       }
       // Tidy up the cover photo too; older covers outside the user's folder stay put.

@@ -4,7 +4,8 @@ import { Chevron, CoverArt, ShuffleIcon } from '@/components/ui'
 import { sortKey } from '@/lib/albums'
 
 function sectionLetter(album) {
-  const c = sortKey(album).charAt(0).toUpperCase()
+  // Accented letters file under their base letter: Édith Piaf goes in E.
+  const c = sortKey(album).normalize('NFD').charAt(0).toUpperCase()
   return c >= 'A' && c <= 'Z' ? c : '#'
 }
 
@@ -20,11 +21,17 @@ export default function AlbumList({ albums, initialGenre, editing, onOpen, onDel
     .filter(a => genre === 'All' || a.genre === genre)
     .filter(a => !q || [a.artist, a.title, a.genre, a.label].join(' ').toLowerCase().includes(q))
 
+  // One section per letter. Everything under # (numbers, other alphabets)
+  // shares a section even when the sort puts it in more than one place.
   const sections = []
+  const byLetter = new Map()
   for (const album of visible) {
     const letter = sectionLetter(album)
-    if (sections.at(-1)?.letter !== letter) sections.push({ letter, albums: [] })
-    sections.at(-1).albums.push(album)
+    if (!byLetter.has(letter)) {
+      byLetter.set(letter, { letter, albums: [] })
+      sections.push(byLetter.get(letter))
+    }
+    byLetter.get(letter).albums.push(album)
   }
 
   const artistCount = new Set(albums.map(a => a.artist)).size
