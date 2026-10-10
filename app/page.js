@@ -2,7 +2,8 @@
 import { useState, useEffect, useEffectEvent, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
 import { supabase, ownCoverPath } from '@/lib/supabase'
 import { sortAlbums, loadDemoAlbums, pickRandom } from '@/lib/albums'
-import { StatusBar, NavBar, TabBar, AlertView, ShuffleIcon, GearIcon } from '@/components/ui'
+import { StatusBar, NavBar, TabBar, AlertView, Hud, ShuffleIcon, GearIcon } from '@/components/ui'
+import { explain } from '@/lib/errors'
 import ImportScreen from '@/components/ImportScreen'
 import AlbumList from '@/components/AlbumList'
 import AlbumDetail from '@/components/AlbumDetail'
@@ -64,6 +65,8 @@ export default function Home() {
   const [flowIndex, setFlowIndex] = useState(0)
   const [nanoColor, setNanoColor] = useState(() => typeof window === 'undefined' ? 'silver' : savedNanoColor())
   const [alert, setAlert] = useState(null)
+  const [hud, setHud] = useState(null)
+  const hudTimer = useRef(null)
   const [shufflePool, setShufflePool] = useState(null)
   const recentPicks = useRef([])
 
@@ -77,6 +80,14 @@ export default function Home() {
 
   const ask = useCallback((title, message, buttons = ['OK']) =>
     new Promise(resolve => setAlert({ title, message, buttons, resolve })), [])
+
+  // A quick result in the centre badge, which fades by itself. Alerts are
+  // for things that need a decision.
+  const notify = useCallback((title, detail, icon = 'done') => {
+    clearTimeout(hudTimer.current)
+    setHud({ title, detail, icon })
+    hudTimer.current = setTimeout(() => setHud(null), icon === 'fail' ? 3000 : 1600)
+  }, [])
 
   function choose(label) {
     alert.resolve(label)
@@ -185,7 +196,7 @@ export default function Home() {
       // row really went; otherwise the album would come back on the next load.
       const { data, error } = await supabase.from('vinyl_records').delete().eq('id', album.id).select('id')
       if (error || !data?.length) {
-        ask('Couldn’t Remove Album', error?.message ?? 'You can only remove records you added.')
+        ask('Couldn’t Remove Album', error ? explain(error) : 'You can only remove records you added.')
         return
       }
       // Tidy up the cover photo too; older covers outside the user's folder stay put.
@@ -195,6 +206,7 @@ export default function Home() {
     setCollection(c => c.filter(r => r.id !== album.id))
     setShufflePool(p => p?.filter(r => r.id !== album.id) ?? null)
     setDetail(d => (d?.id === album.id ? null : d))
+    notify('Removed', album.title)
   }
 
   function handleAdded(record) {
@@ -253,12 +265,13 @@ export default function Home() {
             albums={albums}
             shareOwnerId={shareOwnerId}
             ask={ask}
+            notify={notify}
           />
         ) : detail ? (
           <AlbumDetail key={detail.id} album={detail} onDelete={canManage ? a => deleteRecord(a) : null} />
         ) : tab === 'import' ? (
           canEdit
-            ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} />
+            ? <ImportScreen user={user} onAdded={handleAdded} notify={notify} />
             : <SignInPrompt onSignIn={() => openSettings('signin')} />
         ) : tab === 'albums' || viewingShared ? (
           <AlbumList
@@ -285,6 +298,7 @@ export default function Home() {
         )}
         {/* Shared links are browse-only: just the Albums list and Now Playing. */}
         {!viewingShared && <TabBar tabs={TABS} active={tab} onChange={switchTab} />}
+        <Hud hud={hud} />
         <AlertView alert={alert} onChoose={choose} />
       </div>
       <div className="device-bottom">

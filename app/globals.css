@@ -735,3 +735,46 @@ button.cell { padding-top: 6px; padding-bottom: 6px; }
 @media (prefers-reduced-motion: reduce) {
   .push-in, .alert, .alert-backdrop, .cf-item { animation: none; transition: none; }
 }
+
+/* ── Status checklist ────────────────────────────────────────── */
+
+.status-step { font-size: 15px; padding: 6px 10px; min-height: 40px; }
+.status-step small { line-height: 1.3; }
+.status-step .thumb { width: 36px; height: 36px; }
+.status-icon {
+  width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: #fff; text-shadow: 0 -1px 0 rgba(0,0,0,.25);
+}
+.status-step.done .status-icon { background: linear-gradient(#79c860, #3f9a2a); }
+.status-step.fail .status-icon { background: linear-gradient(#ef7d7d, #c42b2b); }
+.status-step.note .status-icon { background: linear-gradient(#b9bec6, #8a919c); }
+.status-step.fail { color: #b42020; }
+.status-step.fail small { color: #b45a5a; }
+
+/* ── Centre badge (HUD) ──────────────────────────────────────── */
+
+.hud-wrap {
+  position: absolute; inset: 0; z-index: 60; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  animation: fade-in .15s ease-out;
+}
+.hud {
+  width: 156px; min-height: 156px; padding: 14px; border-radius: 14px;
+  /* Dark enough to read over light lists, edged so it shows on black screens. */
+  background: rgba(38,38,38,.88); color: #fff; text-align: center;
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: 0 6px 24px rgba(0,0,0,.45);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+}
+.hud-icon { font-size: 48px; line-height: 56px; }
+.hud strong { font-size: 17px; }
+.hud small { font-size: 13px; color: #ddd; line-height: 1.3; }
+
+/* Inline problem note on the dark Now Playing screen. */
+.dark-note { margin: 4px 20px 16px; font-size: 14px; line-height: 1.35; color: #e8a0a0; text-align: center; }
+.dark-note button {
+  display: block; margin: 8px auto 0; height: 30px; padding: 0 14px;
+  border: 1px solid #000; border-radius: 6px; color: #fff; font-weight: bold; font-size: 13px;
+  background: linear-gradient(#6a6a6a, #343434 50%, #222 50%, #2a2a2a);
+}

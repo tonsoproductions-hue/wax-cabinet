@@ -1,8 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { downloadCsv, shareUrl, shareLink } from '@/lib/export'
-import { NavBar, Chevron, Spinner } from '@/components/ui'
+import { csvFile, saveFile, fileSize, shareUrl, shareLink } from '@/lib/export'
+import { explain } from '@/lib/errors'
+import { NavBar, Chevron, Spinner, StatusSteps } from '@/components/ui'
 
 function SignInForm({ onBack, ask }) {
   const [email, setEmail] = useState('')
@@ -19,7 +20,7 @@ function SignInForm({ onBack, ask }) {
     setSending(false)
     if (error) {
       const unknown = /signups? not allowed|not found/i.test(error.message)
-      ask('Couldn’t Send Link', unknown ? 'That email isn’t set up for Vinyl Crate yet.' : error.message)
+      ask('Couldn’t Send Link', unknown ? 'That email isn’t set up for Vinyl Crate yet. Accounts are by invitation for now.' : explain(error))
       return
     }
     await ask('Check Your Email', `We sent a sign-in link to ${email.trim()}. Open it on this device to sign in.`)
@@ -46,9 +47,10 @@ function SignInForm({ onBack, ask }) {
   )
 }
 
-export default function SettingsScreen({ user, view, setView, onClose, albums, shareOwnerId, ask }) {
+export default function SettingsScreen({ user, view, setView, onClose, albums, shareOwnerId, ask, notify }) {
   const [shareGenre, setShareGenre] = useState('All')
   const [signingOut, setSigningOut] = useState(false)
+  const [exportSteps, setExportSteps] = useState([])
 
   if (view === 'signin') return <SignInForm onBack={() => setView('main')} ask={ask} />
 
@@ -64,8 +66,33 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
     const url = shareUrl(shareOwnerId, shareGenre)
     const what = shareGenre === 'All' ? 'vinyl collection' : `${shareGenre} records`
     const result = await shareLink({ title: 'Vinyl Crate', text: `Browse my ${what} on Vinyl Crate`, url })
-    if (result === 'copied') ask('Link Copied', url)
-    else if (result === 'failed') ask('Share Link', url)
+    if (result === 'copied') notify('Link Copied', 'Paste it anywhere to share')
+    else if (result === 'failed') ask('Copy This Link', `Sharing isn’t available here, so copy the link to share it: ${url}`)
+  }
+
+  // Shows each step of the export as it happens. Nothing may be awaited
+  // before saveFile(): phones only open the share sheet straight after a tap.
+  async function exportCsv() {
+    let file
+    try {
+      file = csvFile(albums)
+    } catch (err) {
+      setExportSteps([{ id: 'make', state: 'fail', label: 'Couldn’t create the spreadsheet', detail: explain(err) }])
+      return
+    }
+    const made = { id: 'make', state: 'done', label: `Created ${file.name}`, detail: `${albums.length} ${albums.length === 1 ? 'album' : 'albums'} · ${fileSize(file.size)}` }
+    setExportSteps([made, { id: 'save', state: 'busy', label: 'Saving the file…' }])
+    let last
+    try {
+      last = {
+        shared: { state: 'done', label: 'Spreadsheet shared', detail: 'It’s wherever you sent it, e.g. Files or Mail.' },
+        cancelled: { state: 'note', label: 'Share sheet closed, nothing saved', detail: 'Tap Download Spreadsheet to try again, then choose Save to Files.' },
+        downloaded: { state: 'done', label: 'Spreadsheet downloaded', detail: 'Look in your Downloads folder.' },
+      }[await saveFile(file)]
+    } catch (err) {
+      last = { state: 'fail', label: 'Couldn’t save the spreadsheet', detail: `${explain(err)} Tap Download Spreadsheet to try again.` }
+    }
+    setExportSteps([made, { id: 'save', ...last }])
   }
 
   return (
@@ -100,7 +127,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
 
         <div className="group-label">Export</div>
         <div className="group">
-          <button className="cell" onClick={() => downloadCsv(albums)} disabled={albums.length === 0}>
+          <button className="cell" onClick={exportCsv} disabled={albums.length === 0}>
             <span className="grow">
               Download Spreadsheet
               <small>CSV · {albums.length} {albums.length === 1 ? 'album' : 'albums'}</small>
@@ -108,6 +135,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
             <Chevron />
           </button>
         </div>
+        {exportSteps.length > 0 && <StatusSteps steps={exportSteps} />}
         <div className="group-footer">Opens in Excel, Numbers or Google Sheets.</div>
 
         <div className="group-label">Share</div>

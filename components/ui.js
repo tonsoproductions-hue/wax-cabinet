@@ -139,3 +139,41 @@ export function AlertView({ alert, onChoose }) {
     </div>
   )
 }
+
+// A checklist of the steps a job is going through. Each step is
+// { id, state, label, detail?, thumb? } where state is 'busy', 'done',
+// 'fail' (red, says why) or 'note' (grey: finished, but needs you).
+const STEP_ICONS = { done: '✓', fail: '✕', note: '–' }
+
+export function StatusSteps({ steps }) {
+  return (
+    <div className="group" role="status" aria-live="polite">
+      {steps.map(s => (
+        <div key={s.id} className={`cell status-step ${s.state}`}>
+          <span className="status-icon">{s.state === 'busy' ? <Spinner /> : STEP_ICONS[s.state]}</span>
+          <span className="grow">
+            {s.label}
+            {s.detail && <small>{s.detail}</small>}
+          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {s.thumb && <img src={s.thumb} className="thumb" alt="" />}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// The translucent badge in the middle of the screen for quick results
+// ("Link Copied", "Removed"). hud is { icon: 'done' | 'fail', title, detail? }.
+export function Hud({ hud }) {
+  if (!hud) return null
+  return (
+    <div className="hud-wrap" role="status" aria-live="polite">
+      <div className="hud">
+        <div className="hud-icon">{hud.icon === 'fail' ? '✕' : '✓'}</div>
+        <strong>{hud.title}</strong>
+        {hud.detail && <small>{hud.detail}</small>}
+      </div>
+    </div>
+  )
+}

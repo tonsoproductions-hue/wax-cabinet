@@ -2,7 +2,9 @@
 import { useRef, useState } from 'react'
 import { supabase, authHeaders } from '@/lib/supabase'
 import { GENRES, CONDITIONS } from '@/lib/genres'
-import { Chevron, Spinner } from '@/components/ui'
+import { fetchJson, explain } from '@/lib/errors'
+import { fileSize } from '@/lib/export'
+import { Chevron, StatusSteps } from '@/components/ui'
 
 const EMPTY_FORM = {
   artist: '', title: '', year: '', genre: 'Jazz',
@@ -33,19 +35,19 @@ function scaledCanvas(img, maxSize) {
   return canvas
 }
 
-export default function ImportScreen({ user, onAdded, ask }) {
+export default function ImportScreen({ user, onAdded, notify }) {
   const [imageData, setImageData] = useState(null)
   const [imageFile, setImageFile] = useState(null)
   const [processing, setProcessing] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [procStatus, setProcStatus] = useState('')
+  // The checklist of what the import is doing; see showStep().
+  const [steps, setSteps] = useState([])
   const [discogsResults, setDiscogsResults] = useState([])
   const [selectedDiscogs, setSelectedDiscogs] = useState(null)
   const [tracklist, setTracklist] = useState([])
   const [saving, setSaving] = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [identifiedBy, setIdentifiedBy] = useState(null)
   // Fixing a wrong match: answers the owner rejected, their hint for Claude,
   // and a free-text Discogs search.
   const [rejected, setRejected] = useState([])
@@ -57,11 +59,26 @@ export default function ImportScreen({ user, onAdded, ask }) {
   const [searchText, setSearchText] = useState('')
   const [textQuery, setTextQuery] = useState('')
   const [discogsCover, setDiscogsCover] = useState(null)
-  const started = !!(imageData || textQuery)
+  const hasSource = !!(imageData || textQuery)
+  const stepsRef = useRef(null)
+
+  // Shows a step in the checklist, adding it if it's new. Starting a step
+  // again (state 'busy') drops the steps after it, since they'll be redone.
+  function showStep(id, state, label, detail, extra) {
+    const step = { id, state, label, detail, ...extra }
+    setSteps(prev => {
+      const i = prev.findIndex(st => st.id === id)
+      if (i === -1) return [...prev, step]
+      return state === 'busy' ? [...prev.slice(0, i), step] : prev.map(st => (st.id === id ? step : st))
+    })
+  }
 
   function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) return
-    const cantOpen = () => ask('Can’t Open Photo', 'That photo’s format isn’t supported here. Try a JPEG or PNG.')
+    resetImport()
+    showStep('photo', 'busy', 'Preparing photo…', file.name)
+    const cantOpen = () => showStep('photo', 'fail', 'Couldn’t open that photo',
+      `${file.type.replace('image/', '').toUpperCase()} photos can’t be read here. Try a JPEG or PNG, or a screenshot of the photo.`)
     const reader = new FileReader()
     reader.onerror = cantOpen
     reader.onload = (e) => {
@@ -75,16 +92,8 @@ export default function ImportScreen({ user, onAdded, ask }) {
         const resized = scaledCanvas(img, 800).toDataURL('image/jpeg', 0.85)
         const cover = await new Promise(resolve => scaledCanvas(img, 1200).toBlob(resolve, 'image/jpeg', 0.85))
         setImageFile(new File([cover], `${file.name.replace(/\.[^.]*$/, '') || 'cover'}.jpg`, { type: 'image/jpeg' }))
-        setTextQuery('')
-        setDiscogsCover(null)
         setImageData(resized)
-        setProgress(10)
-        setDiscogsResults([])
-        setSelectedDiscogs(null)
-        setTracklist([])
-        setRejected([])
-        setHint('')
-        setDiscogsQuery('')
+        showStep('photo', 'done', 'Photo ready', `Resized from ${fileSize(file.size)} to ${fileSize(cover.size)}`, { thumb: resized })
         await identify({ base64: resized.split(',')[1], mediaType: 'image/jpeg' })
       }
       img.src = e.target.result
@@ -113,12 +122,6 @@ export default function ImportScreen({ user, onAdded, ask }) {
     active.current = null
   }
 
-  function finishProcessing(status) {
-    setProcessing(false)
-    setProgress(100)
-    setProcStatus(status)
-  }
-
   // What Claude identifies from: the photo, or the words typed in the search box.
   const currentSource = () => (imageData
     ? { base64: imageData.split(',')[1], mediaType: 'image/jpeg' }
@@ -131,32 +134,32 @@ export default function ImportScreen({ user, onAdded, ask }) {
     const isText = !!source.text
     const req = startRequest(CLAUDE_TIMEOUT_MS)
     setProcessing(true)
-    setProcStatus(isText
+    showStep('claude', 'busy', isText
       ? (retry ? 'Claude is thinking of another match…' : 'Claude is working out which record that is…')
-      : (retry ? 'Claude is taking a closer look…' : 'Claude is reading the cover…'))
-    setProgress(25)
+      : (retry ? 'Claude is taking a closer look…' : 'Claude is reading the cover…'),
+    isText ? `“${source.text}”` : retry ? 'Using a stronger model' : null)
     try {
-      const resp = await fetch('/api/claude', {
+      const { identifiedBy, repeated, ...album } = await fetchJson('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({ ...source, retry, hint: withHint || undefined, rejected: skip?.length ? skip : undefined }),
         signal: req.controller.signal,
       })
-      const { error, identifiedBy: model, repeated, ...album } = await resp.json()
       endRequest(req)
       if (isStale(req)) return
-      if (error) throw new Error(error)
-      setIdentifiedBy(model ?? null)
       if (!album.artist && !album.title) {
-        finishProcessing(isText
-          ? 'Couldn’t work out that record. Try other words or search Discogs below.'
-          : retry ? 'Still couldn’t read it. Try a hint or search Discogs below.' : 'Couldn’t read the cover. Fill in the details below.')
+        showStep('claude', 'fail', isText ? 'Claude couldn’t work out that record' : 'Claude couldn’t read the cover', isText
+          ? 'Try other words, or search Discogs yourself below.'
+          : retry ? 'Add a hint like the label or year, or search Discogs below.' : 'Tap Ask Again for a closer look, or fill in the details below.')
+        setProcessing(false)
         return
       }
       if (repeated) {
-        finishProcessing(`Claude still thinks this is ${album.title}. Add a hint or search Discogs below.`)
+        showStep('claude', 'note', `Claude still thinks it’s ${album.title}`, 'Add a hint or search Discogs yourself below.')
+        setProcessing(false)
         return
       }
+      showStep('claude', 'done', `Identified: ${album.title}`, [album.artist, album.year, identifiedBy && `read by ${identifiedBy}`].filter(Boolean).join(' · '))
       // A new answer replaces the old pick, so drop its Discogs id, price and tracks.
       setForm(f => ({ ...f, ...album, discogs_id: '', market_value: '' }))
       setSelectedDiscogs(null)
@@ -164,15 +167,15 @@ export default function ImportScreen({ user, onAdded, ask }) {
       setTracklist([])
       const query = `${album.artist} ${album.title}`.trim()
       setDiscogsQuery(query)
-      setProgress(55)
       await searchDiscogs(query)
     } catch (err) {
       endRequest(req)
       if (isStale(req)) return
       console.error('identify failed:', err)
-      finishProcessing(req.timedOut
-        ? 'Claude took too long. Try again or search Discogs below.'
-        : 'Couldn’t identify it. Fill in the details below.')
+      showStep('claude', 'fail', req.timedOut ? 'Claude took too long to answer' : 'Couldn’t ask Claude', req.timedOut
+        ? 'Tap Ask Again to retry, or search Discogs yourself below.'
+        : `${explain(err)} You can still fill in the details yourself.`)
+      setProcessing(false)
     }
   }
 
@@ -194,19 +197,9 @@ export default function ImportScreen({ user, onAdded, ask }) {
     e.preventDefault()
     const q = searchText.trim()
     if (!q) return
-    setImageData(null)
-    setImageFile(null)
+    resetImport()
+    setSearchText(q)
     setTextQuery(q)
-    setDiscogsResults([])
-    setSelectedDiscogs(null)
-    setDiscogsCover(null)
-    setTracklist([])
-    setRejected([])
-    setHint('')
-    setDiscogsQuery('')
-    setIdentifiedBy(null)
-    setForm(EMPTY_FORM)
-    setProgress(10)
     identify({ text: q })
   }
 
@@ -220,45 +213,47 @@ export default function ImportScreen({ user, onAdded, ask }) {
   async function searchDiscogs(q) {
     const req = startRequest(DISCOGS_TIMEOUT_MS)
     setProcessing(true)
-    setProcStatus('Searching Discogs…')
+    showStep('discogs', 'busy', 'Searching Discogs for pressings…', `“${q}”`)
     try {
-      const resp = await fetch(`/api/discogs?q=${encodeURIComponent(q)}`, { signal: req.controller.signal })
-      const data = await resp.json()
+      const data = await fetchJson(`/api/discogs?q=${encodeURIComponent(q)}`, { signal: req.controller.signal })
       endRequest(req)
       if (isStale(req)) return
-      if (data.error) throw new Error(data.error)
       const results = data.results?.slice(0, 4) || []
       setDiscogsResults(results)
-      finishProcessing(results.length > 0 ? 'Choose your pressing below.' : 'No Discogs matches. Fill in the details below.')
+      if (results.length) {
+        showStep('discogs', 'done', `Found ${results.length} ${results.length === 1 ? 'pressing' : 'pressings'} on Discogs`, 'Pick yours below to fill in the label, value and tracks.')
+      } else {
+        showStep('discogs', 'note', 'No pressings found on Discogs', 'Try a different search below, or fill in the details yourself.')
+      }
     } catch (err) {
       endRequest(req)
       if (isStale(req)) return
       console.error('searchDiscogs failed:', err)
       setDiscogsResults([])
-      finishProcessing(req.timedOut
-        ? 'Discogs took too long. Try the search again or fill in the details below.'
-        : 'Discogs search failed. Fill in the details below.')
+      showStep('discogs', 'fail', req.timedOut ? 'Discogs took too long to answer' : 'Couldn’t search Discogs', req.timedOut
+        ? 'Try the search again below, or fill in the details yourself.'
+        : `${explain(err)} You can fill in the details yourself.`)
     }
+    setProcessing(false)
   }
 
   async function pickDiscogs(result) {
     setSelectedDiscogs(result.id)
     setDiscogsCover(result.cover_image || result.thumb || null)
     setForm(f => ({ ...f, discogs_id: String(result.id) }))
-    setProcStatus('Loading release details…')
+    showStep('release', 'busy', 'Loading the pressing’s details…', result.title)
     const req = startRequest(DISCOGS_TIMEOUT_MS)
     let d
     try {
-      const resp = await fetch(`/api/discogs?id=${result.id}`, { signal: req.controller.signal })
-      d = await resp.json()
+      d = await fetchJson(`/api/discogs?id=${result.id}`, { signal: req.controller.signal })
       endRequest(req)
       if (isStale(req)) return
-      if (d.error) throw new Error(d.error)
     } catch (err) {
       endRequest(req)
       if (isStale(req)) return
       console.error('pickDiscogs failed:', err)
-      setProcStatus(req.timedOut ? 'Discogs took too long. Tap the pressing to try again.' : 'Couldn’t load release details.')
+      showStep('release', 'fail', 'Couldn’t load the pressing’s details',
+        `${req.timedOut ? 'Discogs took too long.' : explain(err)} Tap the pressing to try again.`)
       return
     }
     setForm(f => ({
@@ -271,7 +266,9 @@ export default function ImportScreen({ user, onAdded, ask }) {
       discogs_id: String(result.id)
     }))
     setTracklist(d.tracklist?.slice(0, 12) || [])
-    setProcStatus('Release loaded.')
+    const label = d.labels?.[0]
+    showStep('release', 'done', 'Details filled in from Discogs',
+      [label && [label.name, label.catno].filter(Boolean).join(' '), d.year || null, d.tracklist?.length && `${d.tracklist.length} tracks`].filter(Boolean).join(' · '))
   }
 
   function resetImport() {
@@ -282,9 +279,8 @@ export default function ImportScreen({ user, onAdded, ask }) {
     setSelectedDiscogs(null)
     setTracklist([])
     setProcessing(false)
-    setProgress(0)
-    setProcStatus('')
-    setIdentifiedBy(null)
+    setSteps([])
+    setSaveFailed(false)
     setRejected([])
     setHint('')
     setDiscogsQuery('')
@@ -296,18 +292,22 @@ export default function ImportScreen({ user, onAdded, ask }) {
 
   async function addRecord() {
     setSaving(true)
+    setSaveFailed(false)
+    let doing = 'save'
     try {
       // A photo is uploaded; a text search uses the chosen pressing's Discogs cover.
       let image_url = imageFile ? null : discogsCover
       if (imageFile) {
+        doing = 'upload'
+        showStep('save', 'busy', 'Uploading the cover photo…', fileSize(imageFile.size))
         const fd = new FormData()
         fd.append('file', imageFile)
-        const up = await fetch('/api/upload', { method: 'POST', body: fd, headers: await authHeaders() })
-        const upData = await up.json()
-        if (upData.error) throw new Error(`Cover upload failed: ${upData.error}`)
-        image_url = upData.url
+        const up = await fetchJson('/api/upload', { method: 'POST', body: fd, headers: await authHeaders() })
+        image_url = up.url
+        doing = 'save'
       }
 
+      showStep('save', 'busy', 'Saving to your collection…')
       const { data, error } = await supabase.from('vinyl_records').insert([{
         ...form,
         year: form.year ? parseInt(form.year) : null,
@@ -317,13 +317,17 @@ export default function ImportScreen({ user, onAdded, ask }) {
         tracklist,
         owner_id: user.id
       }]).select()
-      if (error) throw new Error(error.message)
+      if (error) throw error
 
       resetImport()
       onAdded(data[0])
+      notify('Added', data[0].title || 'to your collection')
     } catch (err) {
       console.error('addRecord failed:', err)
-      ask('Couldn’t Save Record', err.message)
+      showStep('save', 'fail', doing === 'upload' ? 'The cover photo didn’t upload' : 'The record didn’t save',
+        `${explain(err)} Your details are kept, so you can try again.`)
+      setSaveFailed(true)
+      stepsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } finally {
       setSaving(false)
     }
@@ -361,26 +365,10 @@ export default function ImportScreen({ user, onAdded, ask }) {
       </div>
       <div className="group-footer">Claude reads the cover or what you type, then Discogs finds the pressing.</div>
 
-      {started && (
+      {steps.length > 0 && (
         <>
-          <div className="group">
-            <div className="cell proc-cell">
-              {imageData
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={imageData} className="thumb" alt="" />
-                : <span className="thumb search-thumb" aria-hidden="true">
-                    <svg viewBox="0 0 14 14"><circle cx="5.5" cy="5.5" r="4.2" fill="none" stroke="#7f7f7f" strokeWidth="1.6" /><path d="M8.6 8.6L13 13" stroke="#7f7f7f" strokeWidth="1.8" strokeLinecap="round" /></svg>
-                  </span>}
-              <div className="grow">
-                {processing ? 'Identifying…' : 'Identified'}
-                {textQuery && <small className="ellipsis">“{textQuery}”</small>}
-                <small>{procStatus}</small>
-                {identifiedBy && !processing && <small>Read by {identifiedBy}</small>}
-                <div className="progress"><i style={{ width: progress + '%' }} /></div>
-              </div>
-              {processing && <Spinner />}
-            </div>
-          </div>
+          <div className="group-label" ref={stepsRef}>Adding Record</div>
+          <StatusSteps steps={steps} />
           <div className="button-row">
             <button className="gloss-btn" onClick={resetImport}>Start Over</button>
           </div>
@@ -406,7 +394,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
         </>
       )}
 
-      {started && !processing && (
+      {hasSource && !processing && (
         <>
           <div className="group-label">Not Right?</div>
           <div className="group">
@@ -439,7 +427,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
         </>
       )}
 
-      {started && !processing && (
+      {hasSource && !processing && (
         <>
           <div className="group-label">Details</div>
           <div className="group">
@@ -481,7 +469,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
           )}
 
           <button className="big-btn" onClick={addRecord} disabled={saving}>
-            {saving ? 'Saving…' : 'Add to Collection'}
+            {saving ? 'Saving…' : saveFailed ? 'Try Again' : 'Add to Collection'}
           </button>
         </>
       )}
