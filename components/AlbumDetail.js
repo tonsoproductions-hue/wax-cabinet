@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import { CoverArt, Spinner } from '@/components/ui'
 import { apiUrl } from '@/lib/supabase'
 
-export default function AlbumDetail({ album, onDelete }) {
+export default function AlbumDetail({ album, onDelete, onFavorite, onGotIt, onRotate }) {
   const [fetched, setFetched] = useState(null)
+  const [rotating, setRotating] = useState(false)
   const needsTracks = !album.tracklist?.length && !!album.discogs_id
 
   useEffect(() => {
@@ -36,6 +37,26 @@ export default function AlbumDetail({ album, onDelete }) {
         <strong>{album.title || 'Untitled'}</strong>
         <span>{album.artist}</span>
         {album.year && <small>{album.year}</small>}
+        <div className="detail-actions">
+          {onFavorite && !album.wanted && (
+            <button
+              className={`pill-btn${album.favorite ? ' on' : ''}`}
+              aria-pressed={!!album.favorite}
+              onClick={() => onFavorite(album)}
+            >
+              {album.favorite ? '★ Favorite' : '☆ Add to Favorites'}
+            </button>
+          )}
+          {onRotate && (
+            <button
+              className="pill-btn"
+              disabled={rotating}
+              onClick={async () => { setRotating(true); await onRotate(album); setRotating(false) }}
+            >
+              {rotating ? 'Rotating…' : '↻ Rotate'}
+            </button>
+          )}
+        </div>
       </div>
 
       {(info.length > 0 || album.discogs_id) && (
@@ -68,7 +89,14 @@ export default function AlbumDetail({ album, onDelete }) {
         </>
       )}
 
-      {onDelete && <button className="big-btn red" onClick={() => onDelete(album)}>Remove from Collection</button>}
+      {onGotIt && album.wanted && (
+        <button className="big-btn got-it" onClick={() => onGotIt(album)}>Got It — Move to Collection</button>
+      )}
+      {onDelete && (
+        <button className="big-btn red" onClick={() => onDelete(album)}>
+          {album.wanted ? 'Remove from Wish List' : 'Remove from Collection'}
+        </button>
+      )}
     </div>
   )
 }

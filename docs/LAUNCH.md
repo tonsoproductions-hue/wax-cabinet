@@ -61,6 +61,7 @@ API files are named `route.server.js`; the iOS build leaves them out (see
 
 1. **Run the migration.** SQL Editor → paste `supabase/migrations/003_multi_user.sql` → Run.
    It adds profiles (with the Public Collection switch), the scan log and an index. Safe to re-run.
+   Then run `supabase/migrations/004_favorites_and_wants.sql` the same way (favorites and the wish list).
 2. **Open sign-ups.** Authentication → Sign In / Providers → Email → turn **Allow new users to sign up** back on.
 3. **Redirect URLs.** Authentication → URL Configuration → add
    `vinylcrate://auth-callback` (the app) and `https://vinylcrate.vercel.app/**` alongside

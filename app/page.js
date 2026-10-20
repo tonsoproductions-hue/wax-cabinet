@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useEffectEvent, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
-import { supabase, ownCoverPath } from '@/lib/supabase'
+import { supabase, ownCoverPath, authHeaders, apiUrl } from '@/lib/supabase'
+import { rotateImage } from '@/lib/images'
 import { sortAlbums, loadDemoAlbums, loadCollection, pickRandom } from '@/lib/albums'
 import { StatusBar, NavBar, TabBar, AlertView, ShuffleIcon, GearIcon } from '@/components/ui'
 import ImportScreen from '@/components/ImportScreen'
@@ -12,6 +13,12 @@ import { initNative } from '@/lib/native'
 
 const TABS = [
   { id: 'import', label: 'Import' },
+  { id: 'albums', label: 'Albums' },
+  { id: 'coverflow', label: 'Cover Flow' },
+]
+// Share links can't add records, so their Wish List takes Import's place.
+const SHARED_TABS = [
+  { id: 'wishlist', label: 'Wish List' },
   { id: 'albums', label: 'Albums' },
   { id: 'coverflow', label: 'Cover Flow' },
 ]
@@ -84,13 +91,17 @@ export default function Home() {
   const [tab, setTab] = useState('albums')
   const [detail, setDetail] = useState(null)
   const [editing, setEditing] = useState(false)
+  // Your Wish List opens from a row on the Import tab, like an iPod menu.
+  const [wishOpen, setWishOpen] = useState(false)
   const [flowIndex, setFlowIndex] = useState(0)
   const [nanoColor, setNanoColor] = useState(() => typeof window === 'undefined' ? 'silver' : savedNanoColor())
   const [alert, setAlert] = useState(null)
   const [shufflePool, setShufflePool] = useState(null)
   const recentPicks = useRef([])
 
-  const albums = useMemo(() => sortAlbums(collection), [collection])
+  // Wish-list records share the table with owned ones (wanted = true).
+  const albums = useMemo(() => sortAlbums(collection.filter(r => !r.wanted)), [collection])
+  const wishList = useMemo(() => sortAlbums(collection.filter(r => r.wanted)), [collection])
   const viewingShared = !!sharedOwner && sharedOwner !== user?.id
   const inDemo = demo || demoCrate
   const canEdit = !!user && !inDemo && !viewingShared
@@ -159,6 +170,7 @@ export default function Home() {
     setDetail(null)
     setShufflePool(null)
     setEditing(false)
+    setWishOpen(false)
   }
 
   function openSettings(view = 'main') {
@@ -187,7 +199,7 @@ export default function Home() {
 
   // Shake to shuffle, like the 4th-generation iPod nano.
   const onShake = useEffectEvent(() => {
-    if (tab !== 'import' && !settingsOpen && !alert && albums.length > 1) shuffle(albums)
+    if ((tab === 'albums' || tab === 'coverflow') && !settingsOpen && !alert && albums.length > 1) shuffle(albums)
   })
   useEffect(() => {
     // A shake is a sharp change (> 15 m/s²) on at least two axes between
@@ -218,7 +230,9 @@ export default function Home() {
 
   async function deleteRecord(album, { confirm = true } = {}) {
     if (confirm) {
-      const choice = await ask('Remove Album?', `“${album.title}” will be removed from your collection.`, ['Cancel', 'Remove'])
+      const choice = album.wanted
+        ? await ask('Remove from Wish List?', `“${album.title}” will be removed from your wish list.`, ['Cancel', 'Remove'])
+        : await ask('Remove Album?', `“${album.title}” will be removed from your collection.`, ['Cancel', 'Remove'])
       if (choice !== 'Remove') return
     }
     if (!album.demo) {
@@ -236,31 +250,84 @@ export default function Home() {
     setDetail(d => (d?.id === album.id ? null : d))
   }
 
+  // Saves a change to one record (demo records only change on screen).
+  async function updateRecord(album, changes) {
+    if (!album.demo) {
+      const { error } = await supabase.from('vinyl_records').update(changes).eq('id', album.id)
+      if (error) {
+        ask('Couldn’t Save Change', error.message)
+        return false
+      }
+    }
+    const apply = r => (r?.id === album.id ? { ...r, ...changes } : r)
+    setCollection(c => c.map(apply))
+    setShufflePool(p => p?.map(apply) ?? null)
+    setDetail(apply)
+    return true
+  }
+
+  const toggleFavorite = album => updateRecord(album, { favorite: !album.favorite })
+
+  // Turns your own cover photo 90° clockwise, uploads it and tidies away the old one.
+  // Covers saved before photos were resized come back at 800px too.
+  async function rotateCover(album) {
+    try {
+      const oldPath = ownCoverPath(album.image_url, user?.id)
+      const { blob } = await rotateImage(album.image_url)
+      const fd = new FormData()
+      fd.append('file', new File([blob], 'cover.jpg', { type: 'image/jpeg' }))
+      const up = await fetch(apiUrl('/api/upload'), { method: 'POST', body: fd, headers: await authHeaders() })
+      const upData = await up.json()
+      if (upData.error) throw new Error(upData.error)
+      if (await updateRecord(album, { image_url: upData.url }) && oldPath) {
+        supabase.storage.from('album-art').remove([oldPath])
+      }
+    } catch (err) {
+      console.error('rotateCover failed:', err)
+      ask('Couldn’t Rotate Cover', err.message)
+    }
+  }
+
+  // A wish-list record you've bought moves into the collection.
+  async function gotIt(album) {
+    if (await updateRecord(album, { wanted: false })) {
+      setTab('albums')
+      setWishOpen(false)
+    }
+  }
+
   function handleAdded(record) {
     setCollection(c => [record, ...c])
-    setTab('albums')
+    setTab(record.wanted ? 'import' : 'albums')
+    setWishOpen(!!record.wanted)
     setDetail(record)
   }
+
+  // Your wish list inside Import, or the Wish List tab on a share link.
+  const showWish = (tab === 'import' && wishOpen && canEdit) || tab === 'wishlist'
 
   let nav = null
   if (detail) {
     nav = (
       <NavBar
         variant="black"
-        title="Now Playing"
-        left={<button className="bar-btn back" onClick={() => { setDetail(null); setShufflePool(null) }}>{tab === 'coverflow' ? 'Cover Flow' : 'Albums'}</button>}
+        title={detail.wanted ? 'Wished For' : 'Now Playing'}
+        left={<button className="bar-btn back" onClick={() => { setDetail(null); setShufflePool(null) }}>{tab === 'coverflow' ? 'Cover Flow' : showWish ? 'Wish List' : 'Albums'}</button>}
         right={shufflePool?.length > 1 && (
           <button className="bar-btn" onClick={() => shuffle(shufflePool)}><ShuffleIcon color="#fff" size={16} />Again</button>
         )}
       />
     )
   } else if (!settingsOpen) {
-    // Settings gear top-left, Edit top-right. Shared links get neither.
-    const gear = !viewingShared && (
+    // Settings gear top-left (Back on your Wish List), Edit top-right. Shared links get neither.
+    const gear = showWish && !viewingShared ? (
+      <button className="bar-btn back" onClick={() => { setWishOpen(false); setEditing(false) }}>Add Record</button>
+    ) : !viewingShared && (
       <button className="bar-btn icon" aria-label="Settings" onClick={() => openSettings()}><GearIcon /></button>
     )
-    // Edit is always offered on your own Albums; signed out, it leads to Sign In.
-    const edit = tab === 'albums' && !viewingShared && albums.length > 0 && (
+    // Edit is always offered on your own Albums and Wish List; signed out, it leads to Sign In.
+    const listed = showWish ? wishList : albums
+    const edit = (tab === 'albums' || showWish) && !viewingShared && listed.length > 0 && (
       <button
         className={`bar-btn${editing ? ' done' : ''}`}
         onClick={() => (canManage ? setEditing(e => !e) : openSettings('signin'))}
@@ -268,11 +335,15 @@ export default function Home() {
         {editing ? 'Done' : 'Edit'}
       </button>
     )
+    // Share links: Sign In when signed out, then a way back to your own crate.
+    const account = viewingShared && (user
+      ? <button className="bar-btn" onClick={() => { window.location.href = window.location.pathname }}>My Crate</button>
+      : <button className="bar-btn" onClick={() => openSettings('signin')}>Sign In</button>)
     nav = (
       <NavBar
-        title={{ import: 'Add Record', coverflow: 'Cover Flow' }[tab] ?? (viewingShared ? 'Shared Albums' : 'Albums')}
+        title={showWish ? 'Wish List' : { import: 'Add Record', coverflow: 'Cover Flow' }[tab] ?? (viewingShared ? 'Shared Albums' : 'Albums')}
         left={gear}
-        right={edit}
+        right={edit || account}
       />
     )
   }
@@ -292,16 +363,34 @@ export default function Home() {
             albums={albums}
             shareOwnerId={shareOwnerId}
             ask={ask}
+            signInOnly={viewingShared}
           />
         ) : detail ? (
-          <AlbumDetail key={detail.id} album={detail} onDelete={canManage ? a => deleteRecord(a) : null} />
+          <AlbumDetail
+            key={detail.id}
+            album={detail}
+            onDelete={canManage ? a => deleteRecord(a) : null}
+            onFavorite={canManage ? toggleFavorite : null}
+            onGotIt={canManage ? gotIt : null}
+            // Only photos you uploaded; Discogs covers are already upright.
+            onRotate={canEdit && ownCoverPath(detail.image_url, user?.id) ? rotateCover : null}
+          />
+        ) : showWish ? (
+          <AlbumList
+            kind="wishlist"
+            albums={wishList}
+            readOnly={viewingShared}
+            editing={editing && canManage}
+            onOpen={openAlbum}
+            onDelete={a => deleteRecord(a, { confirm: false })}
+          />
         ) : tab === 'import' ? (
           canEdit
-            ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} />
+            ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} wishCount={wishList.length} onOpenWishList={() => setWishOpen(true)} />
             : <SignInPrompt onSignIn={() => openSettings('signin')} />
         ) : showWelcome && tab !== 'import' ? (
           <Welcome onSignIn={() => openSettings('signin')} onDemo={showDemo} />
-        ) : tab === 'albums' || viewingShared ? (
+        ) : tab === 'albums' || (viewingShared && tab !== 'coverflow') ? (
           <AlbumList
             // Remount once the URL is read so a shared link's genre takes effect.
             key={sharedGenre ?? 'all'}
@@ -324,8 +413,8 @@ export default function Home() {
             onShuffle={() => nextPick(albums)}
           />
         )}
-        {/* Shared links are browse-only: just the Albums list and Now Playing. */}
-        {!viewingShared && <TabBar tabs={TABS} active={tab} onChange={switchTab} />}
+        {/* Shared links are browse-only: Wish List, Albums and Cover Flow. */}
+        <TabBar tabs={viewingShared ? SHARED_TABS : TABS} active={tab} onChange={switchTab} />
         <AlertView alert={alert} onChoose={choose} />
       </div>
       <div className="device-bottom">

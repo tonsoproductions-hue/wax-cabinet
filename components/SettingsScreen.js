@@ -8,7 +8,7 @@ import { NavBar, Chevron, Spinner } from '@/components/ui'
 // Email sign-in: a link (and a 6-digit code, for the app) that also creates
 // the account on first use. Password sign-in exists for accounts that were
 // given one, such as the App Review demo account.
-function SignInForm({ onBack, ask }) {
+function SignInForm({ onBack, backLabel = 'Settings', ask }) {
   const [email, setEmail] = useState('')
   const [stage, setStage] = useState('email') // email → code, or password
   const [code, setCode] = useState('')
@@ -58,7 +58,7 @@ function SignInForm({ onBack, ask }) {
 
   return (
     <>
-      <NavBar title="Sign In" left={<button className="bar-btn back" onClick={onBack}>Settings</button>} />
+      <NavBar title="Sign In" left={<button className="bar-btn back" onClick={onBack}>{backLabel}</button>} />
       {stage === 'code' ? (
         <form className="scroll pinstripes" onSubmit={verifyCode}>
           <div className="group-label">Check Your Email</div>
@@ -114,7 +114,9 @@ function Switch({ on, onChange, disabled }) {
   )
 }
 
-export default function SettingsScreen({ user, view, setView, onClose, albums, shareOwnerId, ask }) {
+// signInOnly: opened from a share link, where Sign In is all Settings offers
+// and Back returns to the shared crate.
+export default function SettingsScreen({ user, view, setView, onClose, albums, shareOwnerId, ask, signInOnly }) {
   const [shareGenre, setShareGenre] = useState('All')
   const [busy, setBusy] = useState(null) // 'signout' | 'delete' | 'public'
   const [profile, setProfile] = useState(null)
@@ -127,6 +129,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
     return () => { cancelled = true }
   }, [user])
 
+  if (signInOnly) return <SignInForm onBack={onClose} backLabel="Back" ask={ask} />
   if (view === 'signin') return <SignInForm onBack={() => setView('main')} ask={ask} />
 
   const genres = ['All', ...[...new Set(albums.map(a => a.genre).filter(Boolean))].sort()]

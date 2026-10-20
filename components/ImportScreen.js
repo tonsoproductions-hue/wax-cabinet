@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { supabase, authHeaders, apiUrl } from '@/lib/supabase'
 import { GENRES, CONDITIONS } from '@/lib/genres'
 import { Chevron, Spinner } from '@/components/ui'
+import { rotateImage } from '@/lib/images'
 
 const EMPTY_FORM = {
   artist: '', title: '', year: '', genre: 'Jazz',
@@ -23,7 +24,10 @@ const TEXT_FIELDS = [
 const CLAUDE_TIMEOUT_MS = 45_000
 const DISCOGS_TIMEOUT_MS = 15_000
 
-export default function ImportScreen({ user, onAdded, ask }) {
+// Discogs serves a blank spacer.gif for releases without artwork.
+const realCover = url => (url && !url.endsWith('.gif') ? url : null)
+
+export default function ImportScreen({ user, onAdded, ask, wishCount = 0, onOpenWishList }) {
   const [imageData, setImageData] = useState(null)
   const [imageFile, setImageFile] = useState(null)
   const [processing, setProcessing] = useState(false)
@@ -47,12 +51,16 @@ export default function ImportScreen({ user, onAdded, ask }) {
   const [searchText, setSearchText] = useState('')
   const [textQuery, setTextQuery] = useState('')
   const [discogsCover, setDiscogsCover] = useState(null)
+  // With both a photo and a chosen pressing, the Discogs cover is saved
+  // unless the owner picks their own photo.
+  const [usePhoto, setUsePhoto] = useState(false)
   const started = !!(imageData || textQuery)
 
   function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) return
     setTextQuery('')
     setDiscogsCover(null)
+    setUsePhoto(false)
     const reader = new FileReader()
     reader.onload = (e) => {
       // Resize before sending to the vision model, and upload the resize rather
@@ -243,7 +251,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
 
   async function pickDiscogs(result) {
     setSelectedDiscogs(result.id)
-    setDiscogsCover(result.cover_image || result.thumb || null)
+    setDiscogsCover(realCover(result.cover_image) || realCover(result.thumb))
     setForm(f => ({ ...f, discogs_id: String(result.id) }))
     setProcStatus('Loading release details…')
     const req = startRequest(DISCOGS_TIMEOUT_MS)
@@ -270,8 +278,22 @@ export default function ImportScreen({ user, onAdded, ask }) {
       market_value: d.lowest_price != null ? d.lowest_price.toFixed(2) : f.market_value || '',
       discogs_id: String(result.id)
     }))
+    // The release's primary image is its front cover; fall back to the search result's.
+    const primary = realCover(d.images?.find(i => i.type === 'primary')?.uri)
+    if (primary) setDiscogsCover(primary)
     setTracklist(d.tracklist?.slice(0, 12) || [])
     setProcStatus('Release loaded.')
+  }
+
+  // Turns the photo that will be saved; Claude has already read it either way.
+  async function rotatePhoto() {
+    try {
+      const { blob, dataUrl } = await rotateImage(imageData)
+      setImageData(dataUrl)
+      setImageFile(f => new File([blob], f?.name || 'cover.jpg', { type: 'image/jpeg' }))
+    } catch (err) {
+      ask('Couldn’t Rotate Photo', err.message)
+    }
   }
 
   function resetImport() {
@@ -291,15 +313,19 @@ export default function ImportScreen({ user, onAdded, ask }) {
     setSearchText('')
     setTextQuery('')
     setDiscogsCover(null)
+    setUsePhoto(false)
     setForm(EMPTY_FORM)
   }
 
-  async function addRecord() {
-    setSaving(true)
+  // wanted: save to the wish list instead of the collection.
+  async function addRecord({ wanted = false } = {}) {
+    setSaving(wanted ? 'wishlist' : 'collection')
     try {
-      // A photo is uploaded; a text search uses the chosen pressing's Discogs cover.
-      let image_url = imageFile ? null : discogsCover
-      if (imageFile) {
+      // The chosen pressing's Discogs cover is used when there is one (no upload);
+      // otherwise, or if the owner chose their own photo, the photo is uploaded.
+      const uploadPhoto = imageFile && (usePhoto || !discogsCover)
+      let image_url = uploadPhoto ? null : discogsCover
+      if (uploadPhoto) {
         const fd = new FormData()
         fd.append('file', imageFile)
         const up = await fetch(apiUrl('/api/upload'), { method: 'POST', body: fd, headers: await authHeaders() })
@@ -315,6 +341,8 @@ export default function ImportScreen({ user, onAdded, ask }) {
         discogs_id: form.discogs_id ? parseInt(form.discogs_id) : null,
         image_url,
         tracklist,
+        // Only sent when true, so adding to the collection still works before migration 004.
+        ...(wanted ? { wanted: true } : {}),
         owner_id: user.id
       }]).select()
       if (error) throw new Error(error.message)
@@ -361,6 +389,20 @@ export default function ImportScreen({ user, onAdded, ask }) {
       </div>
       <div className="group-footer">Claude reads the cover or what you type, then Discogs finds the pressing.</div>
 
+      {/* Hidden mid-scan so it doesn't sit between the photo and its results. */}
+      {!started && (
+        <>
+          <div className="group">
+            <button className="cell" onClick={onOpenWishList}>
+              <span className="grow">Wish List</span>
+              <span className="wish-count">{wishCount > 0 && wishCount}</span>
+              <Chevron />
+            </button>
+          </div>
+          <div className="group-footer">Records you’re hunting for. Add one with Add to Wish List after a scan or search.</div>
+        </>
+      )}
+
       {started && (
         <>
           <div className="group">
@@ -382,6 +424,7 @@ export default function ImportScreen({ user, onAdded, ask }) {
             </div>
           </div>
           <div className="button-row">
+            {imageData && <button className="gloss-btn" onClick={rotatePhoto}>↻ Rotate Photo</button>}
             <button className="gloss-btn" onClick={resetImport}>Start Over</button>
           </div>
         </>
@@ -441,6 +484,32 @@ export default function ImportScreen({ user, onAdded, ask }) {
 
       {started && !processing && (
         <>
+          {imageData && discogsCover && (
+            <>
+              <div className="group-label">Cover Art</div>
+              <div className="group">
+                <button className="cell" onClick={() => setUsePhoto(false)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={discogsCover} className="thumb" alt="" />
+                  <span className="grow">
+                    Discogs Cover
+                    <small>A clean scan of this pressing</small>
+                  </span>
+                  {!usePhoto && <span className="check">✓</span>}
+                </button>
+                <button className="cell" onClick={() => setUsePhoto(true)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imageData} className="thumb" alt="" />
+                  <span className="grow">
+                    Use My Photo
+                    <small>Show your own copy</small>
+                  </span>
+                  {usePhoto && <span className="check">✓</span>}
+                </button>
+              </div>
+            </>
+          )}
+
           <div className="group-label">Details</div>
           <div className="group">
             {TEXT_FIELDS.map(([label, key, inputMode]) => (
@@ -480,9 +549,14 @@ export default function ImportScreen({ user, onAdded, ask }) {
             </>
           )}
 
-          <button className="big-btn" onClick={addRecord} disabled={saving}>
-            {saving ? 'Saving…' : 'Add to Collection'}
+          <button className="big-btn" onClick={() => addRecord()} disabled={!!saving}>
+            {saving === 'collection' ? 'Saving…' : 'Add to Collection'}
           </button>
+          <div className="button-row add-wish">
+            <button className="gloss-btn" onClick={() => addRecord({ wanted: true })} disabled={!!saving}>
+              {saving === 'wishlist' ? 'Saving…' : 'Add to Wish List'}
+            </button>
+          </div>
         </>
       )}
     </div>

@@ -14,7 +14,9 @@ create table if not exists public.vinyl_records (
   discogs_id    bigint,
   market_value  numeric(10, 2),
   image_url     text,
-  tracklist     jsonb not null default '[]'::jsonb
+  tracklist     jsonb not null default '[]'::jsonb,
+  favorite      boolean not null default false,
+  wanted        boolean not null default false  -- on the wish list, not yet owned
 );
 
 create index if not exists vinyl_records_owner_id_idx on public.vinyl_records (owner_id);

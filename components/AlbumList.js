@@ -8,16 +8,26 @@ function sectionLetter(album) {
   return c >= 'A' && c <= 'Z' ? c : '#'
 }
 
-export default function AlbumList({ albums, initialGenre, editing, onOpen, onDelete, onShuffle }) {
+// The Favorites filter sits in the genre bar but matches starred records.
+const FAVORITES = '★ Favorites'
+
+// kind="wishlist" lists a wish list: no shuffle, favorites or shake tip.
+// readOnly: someone else's, seen from a share link.
+export default function AlbumList({ albums, kind = 'albums', readOnly, initialGenre, editing, onOpen, onDelete, onShuffle }) {
+  const wishes = kind === 'wishlist'
   const [search, setSearch] = useState('')
   const [genre, setGenre] = useState(initialGenre || 'All')
   const [armed, setArmed] = useState(null)
   const scrollRef = useRef(null)
 
-  const genres = ['All', ...[...new Set(albums.map(a => a.genre).filter(Boolean))].sort()]
+  const hasFavorites = !wishes && albums.some(a => a.favorite)
+  const genreList = [...new Set(albums.map(a => a.genre).filter(Boolean))].sort()
+  const genres = ['All', ...(hasFavorites ? [FAVORITES] : []), ...genreList]
+  // A filter that no longer matches anything (the last favorite unstarred) falls back to All.
+  const scope = genres.includes(genre) ? genre : 'All'
   const q = search.trim().toLowerCase()
   const visible = albums
-    .filter(a => genre === 'All' || a.genre === genre)
+    .filter(a => scope === 'All' || (scope === FAVORITES ? a.favorite : a.genre === scope))
     .filter(a => !q || [a.artist, a.title, a.genre, a.label].join(' ').toLowerCase().includes(q))
 
   const sections = []
@@ -40,8 +50,22 @@ export default function AlbumList({ albums, initialGenre, editing, onOpen, onDel
     return (
       <div className="scroll albums">
         <div className="empty">
-          <strong>No Albums</strong>
-          <small>Add a record from the Import tab. Photograph the cover and Vinyl Crate looks up the pressing for you.</small>
+          {wishes && readOnly ? (
+            <>
+              <strong>Nothing on This Wish List</strong>
+              <small>This collector hasn’t added any records they’re hunting for yet.</small>
+            </>
+          ) : wishes ? (
+            <>
+              <strong>Your Wish List Is Empty</strong>
+              <small>Find a record on the Import tab, then tap Add to Wish List. When you buy it, tap Got It to move it into your collection.</small>
+            </>
+          ) : (
+            <>
+              <strong>No Albums</strong>
+              <small>Add a record from the Import tab. Photograph the cover and Vinyl Crate looks up the pressing for you.</small>
+            </>
+          )}
         </div>
       </div>
     )
@@ -58,13 +82,13 @@ export default function AlbumList({ albums, initialGenre, editing, onOpen, onDel
         </div>
         {genres.length > 2 && (
           <div className="scope-bar">
-            {genres.map(g => <button key={g} className={g === genre ? 'on' : ''} onClick={() => setGenre(g)}>{g}</button>)}
+            {genres.map(g => <button key={g} className={g === scope ? 'on' : ''} onClick={() => setGenre(g)}>{g}</button>)}
           </div>
         )}
 
-        {visible.length > 1 && !editing && (
+        {!wishes && visible.length > 1 && !editing && (
           <button className="shuffle-row" onClick={() => onShuffle(visible)}>
-            Shuffle{genre !== 'All' ? ` ${genre}` : q ? ' Results' : ''}
+            Shuffle{scope === FAVORITES ? ' Favorites' : scope !== 'All' ? ` ${scope}` : q ? ' Results' : ''}
             <ShuffleIcon color="#385487" />
           </button>
         )}
@@ -81,7 +105,7 @@ export default function AlbumList({ albums, initialGenre, editing, onOpen, onDel
                   {editing && <span className={`minus-btn${armed === a.id ? ' armed' : ''}`} />}
                   <CoverArt album={a} />
                   <span style={{ minWidth: 0 }}>
-                    <strong>{a.title || 'Untitled'}</strong>
+                    <strong>{!wishes && a.favorite && <span className="fav-star" aria-label="Favorite">★</span>}{a.title || 'Untitled'}</strong>
                     <small>{[a.artist, a.year].filter(Boolean).join(' — ')}</small>
                   </span>
                   {!editing && <Chevron />}
@@ -97,9 +121,9 @@ export default function AlbumList({ albums, initialGenre, editing, onOpen, onDel
         {visible.length === 0 && <div className="empty"><strong>No Results</strong></div>}
 
         <div className="list-footer">
-          {albums.length} {albums.length === 1 ? 'Album' : 'Albums'}
-          <small>{artistCount} {artistCount === 1 ? 'Artist' : 'Artists'}{totalValue > 0 ? ` · $${totalValue.toFixed(0)} est. value` : ''}</small>
-          {albums.length > 1 && <small className="shake-tip">Shake your phone to shuffle</small>}
+          {albums.length} {wishes ? (albums.length === 1 ? 'Wish' : 'Wishes') : albums.length === 1 ? 'Album' : 'Albums'}
+          <small>{artistCount} {artistCount === 1 ? 'Artist' : 'Artists'}{totalValue > 0 ? ` · $${totalValue.toFixed(0)} ${wishes ? 'est. cost' : 'est. value'}` : ''}</small>
+          {!wishes && albums.length > 1 && <small className="shake-tip">Shake your phone to shuffle</small>}
         </div>
       </div>
       {showIndex && (

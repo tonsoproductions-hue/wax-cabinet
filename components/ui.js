@@ -52,6 +52,10 @@ const TAB_ICONS = {
   coverflow: (
     <path d="M2 8.5l6 2v9l-6 2zM10 6h10v18H10zM28 8.5l-6 2v9l6 2z" />
   ),
+  // A ribbon bookmark with a cut-out star.
+  wishlist: (
+    <path fillRule="evenodd" d="M7 3h16a1 1 0 0 1 1 1v23l-9-6-9 6V4a1 1 0 0 1 1-1zm8 4l1.6 3.4 3.7.4-2.8 2.5.8 3.7-3.3-1.9-3.3 1.9.8-3.7-2.8-2.5 3.7-.4z" />
+  ),
 }
 
 export function TabBar({ tabs, active, onChange }) {
