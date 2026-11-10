@@ -23,12 +23,14 @@ export default function Support() {
       <p>Settings → <em>Share Collection Link</em>. People with the link can browse and shuffle but can’t change anything. Turn off <em>Public Collection</em> to stop sharing.</p>
       <h3>How do I export my records?</h3>
       <p>Settings → <em>Export Spreadsheet</em> creates a CSV file for Excel, Numbers or Google Sheets.</p>
+      <h3>How do I change how the app looks?</h3>
+      <p>Settings → <em>Appearance</em>: choose Classic iPod or Wood Hi-Fi. The choice is saved on that device.</p>
       <h3>How do I delete my account?</h3>
       <p>Settings → <em>Delete Account</em>. This removes your account, records and cover photos for good.</p>
 
       <h2>Contact</h2>
       <p>{SUPPORT_EMAIL ? <>Email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> and we’ll get back to you.</> : 'Support contact coming soon.'}</p>
-      <p><a href="/privacy/">Privacy Policy</a></p>
+      <p><a href="/privacy/">Privacy Policy</a> · <a href="/terms/">Terms of Use</a> · <a href="/delete-account/">Delete Your Account</a></p>
     </>
   )
 }

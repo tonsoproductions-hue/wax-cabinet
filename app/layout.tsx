@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { DEFAULT_THEME, THEMES, THEME_BOOT_SCRIPT } from "@/lib/themes";
 import "./globals.css";
+// One stylesheet per extra look; each only applies under its own
+// [data-theme] attribute. See lib/themes.js.
+import "./themes/wood.css";
 
 export const metadata: Metadata = {
   title: "Vinyl Crate",
@@ -9,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: THEMES[DEFAULT_THEME].themeColor,
   // Draw under the notch and home indicator; globals.css pads with safe-area insets.
   viewportFit: "cover",
 };
@@ -20,7 +24,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // The boot script sets data-theme from the saved choice before first
+    // paint, so the attribute can differ from what the server rendered.
+    <html lang="en" data-theme={DEFAULT_THEME} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

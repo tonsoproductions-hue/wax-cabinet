@@ -52,6 +52,14 @@ API files are named `route.server.js`; the iOS build leaves them out (see
   `com.tonsoproductions.vinylcrate`, camera and photo permissions, haptic
   click wheel, native share sheet, CSV export to Files, `vinylcrate://`
   sign-in links, icon and splash screen.
+- **Two looks.** Settings → Appearance switches the whole interface between
+  *Classic iPod* and *Wood Hi-Fi* (walnut, brass and a turntable in place of
+  the click-wheel player). Themes are listed in `lib/themes.js`; see
+  "Adding a theme" at the end.
+- **Privacy pages and declarations.** `/privacy/`, `/terms/`,
+  `/delete-account/` and `/support/` on the website, linked from Settings →
+  About; an Apple privacy manifest (`ios/App/App/PrivacyInfo.xcprivacy`); and
+  `docs/APP_PRIVACY.md`, the answers to paste into App Store Connect.
 - **Ops.** `/api/health`, a daily Vercel cron, CI on GitHub (lint + both
   builds), `.env.example` listing every setting.
 
@@ -139,14 +147,18 @@ Then redeploy. Also:
 2. App Store Connect → Apps → **+** → New App: iOS, name *Vinyl Crate* (pick an
    alternative if taken), bundle id `com.tonsoproductions.vinylcrate`, SKU `vinylcrate`.
 3. **App information:** category Music (secondary: Lifestyle). Privacy Policy URL
-   `https://vinylcrate.vercel.app/privacy/`; Support URL `…/support/`.
-4. **App Privacy** (data types, all *linked to the user*, *not used for tracking*,
-   purpose *App Functionality*): Contact Info → Email Address; User Content →
-   Photos or Videos; User Content → Other User Content (collection); Usage Data →
-   Product Interaction (scan log).
+   `https://vinylcrate.vercel.app/privacy/`; Support URL `…/support/`. Deploy the
+   website first so these pages (and `/terms/`, `/delete-account/`) are live
+   before you submit; reviewers open them.
+4. **App Privacy:** copy the answers from `docs/APP_PRIVACY.md` (data types, all
+   *linked to the user*, *not used for tracking*, purpose *App Functionality*):
+   Contact Info → Email Address; User Content → Photos or Videos; User Content →
+   Other User Content (collection); Identifiers → User ID; Usage Data → Product
+   Interaction (scan log).
 5. **Age rating:** 4+.
 6. **Screenshots:** iPhone 6.9" (1320 × 2868) from the simulator (iPhone 17 Pro Max):
-   Albums, Now Playing, Cover Flow, Import with a result, Settings.
+   Albums, Now Playing, the Turntable (or Cover Flow), Import with a result,
+   Settings → Appearance.
 7. **Archive and upload:** in Xcode choose *Any iOS Device* → Product → Archive →
    Distribute App → App Store Connect. Test it with **TestFlight** (internal
    testers, then up to 10,000 external testers) before submitting.
@@ -159,8 +171,11 @@ Then redeploy. Also:
 - **Guideline 5.2.5 (Apple products and trademarks).** The Cover Flow tab
   draws an iPod nano with a click wheel and uses the name *Cover Flow*. Apple
   may reject apps that look confusingly like its own products. The lowest-risk
-  option is to rename the tab (e.g. *Flip*) and make the player more stylised;
-  ask Claude to do this if review pushes back.
+  option is to ship with the Wood Hi-Fi look as the default: set
+  `DEFAULT_THEME = 'wood'` in `lib/themes.js`, and take the store screenshots
+  in that look. Classic iPod stays available under Settings → Appearance. If
+  review still pushes back, rename the tab (e.g. *Flip*) in the `ipod` entry
+  of `lib/themes.js` and make the player more stylised.
 - **Guideline 4.2 (minimum functionality).** Web-based apps need to feel like
   apps. Vinyl Crate's camera import, haptics, share sheet, Files export, shake to
   shuffle and offline-bundled interface help; mention them in the review notes.
@@ -212,3 +227,16 @@ Again** or sends a hint, the app uses `VISION_RETRY_MODELS` instead (default:
 every model after the cheapest), tells the model which answers were wrong, and
 says so if the model stands by one of them. Prices for cost logging live in
 `lib/vision.js` (`MODEL_CATALOG`); other providers can be added there as one function.
+
+### Adding a theme
+
+1. Add an entry to `THEMES` in `lib/themes.js` (name, blurb, the third tab's
+   label and icon, picker colours).
+2. Add `app/themes/<id>.css` with every rule under `[data-theme="<id>"]`
+   (copy `wood.css` as a starting point) and import it in `app/layout.tsx`.
+3. Optional: give it its own browse screen. Write a component that takes the
+   same props as `components/Nano.js` and `components/Deck.js`, register it in
+   `BROWSERS` in `app/page.js`, and name it in the theme's `browse.screen`.
+
+The choice is saved on the device (`localStorage`), applied before first
+paint, and appears in Settings → Appearance automatically.

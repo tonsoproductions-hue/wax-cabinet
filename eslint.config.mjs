@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The built bundle that `npm run build:ios` copies into the Xcode project.
+    "ios/**",
   ]),
 ]);
 
