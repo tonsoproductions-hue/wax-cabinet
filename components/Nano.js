@@ -15,7 +15,7 @@ export const NANO_COLORS = {
 const STEP_DEGREES = 22
 
 let audio
-function click() {
+export function click() {
   // In the iOS app, a haptic tick under the finger; on the web, a tiny click sound.
   if (isNative()) {
     hapticTick()
@@ -37,8 +37,7 @@ function click() {
   }
 }
 
-function CoverFlow({ albums, index, setIndex, onSelect }) {
-  const size = 104
+export function CoverFlow({ albums, index, setIndex, onSelect, size = 104, label = 'Cover Flow' }) {
   const drag = useRef(null)
   const wheelAcc = useRef(0)
 
@@ -89,7 +88,7 @@ function CoverFlow({ albums, index, setIndex, onSelect }) {
       className="coverflow"
       style={{ '--cf-size': `${size}px` }}
       tabIndex={0}
-      aria-label="Cover Flow"
+      aria-label={label}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -120,7 +119,10 @@ function CoverFlow({ albums, index, setIndex, onSelect }) {
   )
 }
 
-function ClickWheel({ onStep, onMenu, onPrev, onNext, onPlay, onCenter }) {
+// Turning a finger around a dial: calls onStep(±1) every STEP_DEGREES of
+// travel, or onTap(angle) for a press that didn't spin. Shared by the click
+// wheel and the wood theme's tuning knob. Spread `handlers` on the dial.
+export function useSpin({ onStep, onTap, ignore }) {
   const ref = useRef(null)
   const state = useRef(null)
   const wheelAcc = useRef(0)
@@ -131,7 +133,7 @@ function ClickWheel({ onStep, onMenu, onPrev, onNext, onPlay, onCenter }) {
   }
 
   function onPointerDown(e) {
-    if (e.target.closest('.wheel-center')) return
+    if (ignore && e.target.closest(ignore)) return
     ref.current.setPointerCapture(e.pointerId)
     const a = angleOf(e)
     state.current = { last: a, start: a, acc: 0, travel: 0 }
@@ -152,13 +154,8 @@ function ClickWheel({ onStep, onMenu, onPrev, onNext, onPlay, onCenter }) {
   function onPointerUp() {
     const s = state.current
     state.current = null
-    if (!s || s.travel > 10) return
-    // A tap rather than a spin: press the button under the finger.
-    const a = s.start
-    if (a > -135 && a < -45) onMenu()
-    else if (a >= -45 && a <= 45) onNext()
-    else if (a > 45 && a < 135) onPlay()
-    else onPrev()
+    // A tap rather than a spin: report where it landed.
+    if (s && s.travel <= 10) onTap?.(s.start)
   }
   function onWheel(e) {
     wheelAcc.current += e.deltaY
@@ -168,15 +165,30 @@ function ClickWheel({ onStep, onMenu, onPrev, onNext, onPlay, onCenter }) {
     }
   }
 
+  return {
+    ref,
+    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: () => { state.current = null }, onWheel },
+  }
+}
+
+function ClickWheel({ onStep, onMenu, onPrev, onNext, onPlay, onCenter }) {
+  const { ref, handlers } = useSpin({
+    onStep,
+    ignore: '.wheel-center',
+    // Press the button under the finger.
+    onTap(a) {
+      if (a > -135 && a < -45) onMenu()
+      else if (a >= -45 && a <= 45) onNext()
+      else if (a > 45 && a < 135) onPlay()
+      else onPrev()
+    },
+  })
+
   return (
     <div
       className="wheel"
       ref={ref}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={() => { state.current = null }}
-      onWheel={onWheel}
+      {...handlers}
       role="group"
       aria-label="Click wheel"
     >

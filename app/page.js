@@ -8,20 +8,14 @@ import ImportScreen from '@/components/ImportScreen'
 import AlbumList from '@/components/AlbumList'
 import AlbumDetail from '@/components/AlbumDetail'
 import Nano, { NANO_COLORS } from '@/components/Nano'
+import Deck from '@/components/Deck'
 import SettingsScreen from '@/components/SettingsScreen'
 import { initNative } from '@/lib/native'
+import { useTheme } from '@/lib/use-theme'
 
-const TABS = [
-  { id: 'import', label: 'Import' },
-  { id: 'albums', label: 'Albums' },
-  { id: 'coverflow', label: 'Cover Flow' },
-]
-// Share links can't add records, so their Wish List takes Import's place.
-const SHARED_TABS = [
-  { id: 'wishlist', label: 'Wish List' },
-  { id: 'albums', label: 'Albums' },
-  { id: 'coverflow', label: 'Cover Flow' },
-]
+// The third tab ('coverflow') is the theme's browse screen: its label, icon
+// and component come from the active theme (lib/themes.js).
+const BROWSERS = { nano: Nano, deck: Deck }
 
 const noSubscribe = () => () => {}
 
@@ -96,6 +90,15 @@ export default function Home() {
   const [flowIndex, setFlowIndex] = useState(0)
   const [nanoColor, setNanoColor] = useState(() => typeof window === 'undefined' ? 'silver' : savedNanoColor())
   const [alert, setAlert] = useState(null)
+  const theme = useTheme()
+  const Browser = BROWSERS[theme.browse.screen]
+  const browseTab = { id: 'coverflow', label: theme.browse.label, icon: theme.browse.icon }
+  // Share links can't add records, so their Wish List takes Import's place.
+  const tabs = [
+    sharedOwner && sharedOwner !== user?.id ? { id: 'wishlist', label: 'Wish List' } : { id: 'import', label: 'Import' },
+    { id: 'albums', label: 'Albums' },
+    browseTab,
+  ]
   const [shufflePool, setShufflePool] = useState(null)
   const recentPicks = useRef([])
 
@@ -312,7 +315,7 @@ export default function Home() {
       <NavBar
         variant="black"
         title={detail.wanted ? 'Wished For' : 'Now Playing'}
-        left={<button className="bar-btn back" onClick={() => { setDetail(null); setShufflePool(null) }}>{tab === 'coverflow' ? 'Cover Flow' : showWish ? 'Wish List' : 'Albums'}</button>}
+        left={<button className="bar-btn back" onClick={() => { setDetail(null); setShufflePool(null) }}>{tab === 'coverflow' ? theme.browse.label : showWish ? 'Wish List' : 'Albums'}</button>}
         right={shufflePool?.length > 1 && (
           <button className="bar-btn" onClick={() => shuffle(shufflePool)}><ShuffleIcon color="#fff" size={16} />Again</button>
         )}
@@ -341,7 +344,7 @@ export default function Home() {
       : <button className="bar-btn" onClick={() => openSettings('signin')}>Sign In</button>)
     nav = (
       <NavBar
-        title={showWish ? 'Wish List' : { import: 'Add Record', coverflow: 'Cover Flow' }[tab] ?? (viewingShared ? 'Shared Albums' : 'Albums')}
+        title={showWish ? 'Wish List' : { import: 'Add Record', coverflow: theme.browse.label }[tab] ?? (viewingShared ? 'Shared Albums' : 'Albums')}
         left={gear}
         right={edit || account}
       />
@@ -402,7 +405,7 @@ export default function Home() {
             onShuffle={pool => { requestMotionAccess(); shuffle(pool) }}
           />
         ) : (
-          <Nano
+          <Browser
             albums={albums}
             index={flowAt}
             setIndex={setFlowIndex}
@@ -413,8 +416,8 @@ export default function Home() {
             onShuffle={() => nextPick(albums)}
           />
         )}
-        {/* Shared links are browse-only: Wish List, Albums and Cover Flow. */}
-        <TabBar tabs={viewingShared ? SHARED_TABS : TABS} active={tab} onChange={switchTab} />
+        {/* Shared links are browse-only: Wish List, Albums and the browse tab. */}
+        <TabBar tabs={tabs} active={tab} onChange={switchTab} />
         <AlertView alert={alert} onChoose={choose} />
       </div>
       <div className="device-bottom">

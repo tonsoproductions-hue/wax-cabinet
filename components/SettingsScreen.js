@@ -4,6 +4,8 @@ import { supabase, authHeaders, apiUrl } from '@/lib/supabase'
 import { downloadCsv, shareUrl, shareLink } from '@/lib/export'
 import { authRedirectUrl } from '@/lib/native'
 import { NavBar, Chevron, Spinner } from '@/components/ui'
+import { THEMES } from '@/lib/themes'
+import { useTheme, setTheme } from '@/lib/use-theme'
 
 // Email sign-in: a link (and a 6-digit code, for the app) that also creates
 // the account on first use. Password sign-in exists for accounts that were
@@ -120,6 +122,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
   const [shareGenre, setShareGenre] = useState('All')
   const [busy, setBusy] = useState(null) // 'signout' | 'delete' | 'public'
   const [profile, setProfile] = useState(null)
+  const theme = useTheme()
 
   useEffect(() => {
     if (!user) return
@@ -197,7 +200,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
                 <span className="grow">Public Collection</span>
                 <Switch on={isPublic} onChange={setPublic} disabled={!profile || busy === 'public'} />
               </div>
-              <button className="cell" style={{ justifyContent: 'center', color: '#c41f1f' }} onClick={signOut} disabled={!!busy}>
+              <button className="cell danger" onClick={signOut} disabled={!!busy}>
                 {busy === 'signout' ? <Spinner /> : 'Sign Out'}
               </button>
             </div>
@@ -216,6 +219,23 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
             <div className="group-footer">Sign in to build your own crate.</div>
           </>
         )}
+
+        <div className="group-label">Appearance</div>
+        <div className="group" role="radiogroup" aria-label="Appearance">
+          {Object.values(THEMES).map(t => (
+            <button key={t.id} className="cell" role="radio" aria-checked={t.id === theme.id} onClick={() => setTheme(t.id)}>
+              <span className="theme-swatch" aria-hidden="true">
+                {t.swatch.map(c => <i key={c} style={{ background: c }} />)}
+              </span>
+              <span className="grow">
+                {t.name}
+                <small>{t.blurb}</small>
+              </span>
+              {t.id === theme.id && <span className="check" aria-hidden="true">✓</span>}
+            </button>
+          ))}
+        </div>
+        <div className="group-footer">Changes the look of the whole app on this device.</div>
 
         <div className="group-label">Export</div>
         <div className="group">
@@ -253,12 +273,18 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
           <a className="cell" href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/support/`} target="_blank" rel="noreferrer">
             <span className="grow">Support</span><Chevron />
           </a>
+          <a className="cell" href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/terms/`} target="_blank" rel="noreferrer">
+            <span className="grow">Terms of Use</span><Chevron />
+          </a>
+          <a className="cell" href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/delete-account/`} target="_blank" rel="noreferrer">
+            <span className="grow">Deleting Your Data</span><Chevron />
+          </a>
         </div>
 
         {user && (
           <>
             <div className="group" style={{ marginTop: 24 }}>
-              <button className="cell" style={{ justifyContent: 'center', color: '#c41f1f' }} onClick={deleteAccount} disabled={!!busy}>
+              <button className="cell danger" onClick={deleteAccount} disabled={!!busy}>
                 {busy === 'delete' ? <Spinner /> : 'Delete Account'}
               </button>
             </div>

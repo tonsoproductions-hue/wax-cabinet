@@ -52,6 +52,10 @@ const TAB_ICONS = {
   coverflow: (
     <path d="M2 8.5l6 2v9l-6 2zM10 6h10v18H10zM28 8.5l-6 2v9l6 2z" />
   ),
+  // A record on a platter with a tonearm across it.
+  turntable: (
+    <path fillRule="evenodd" d="M13 4a11 11 0 1 1 0 22a11 11 0 1 1 0-22zm0 8a3 3 0 1 0 0 6a3 3 0 1 0 0-6zM25 3h2.4v12.2l-4.6 6.6-2-1.4L25 14.4z" />
+  ),
   // A ribbon bookmark with a cut-out star.
   wishlist: (
     <path fillRule="evenodd" d="M7 3h16a1 1 0 0 1 1 1v23l-9-6-9 6V4a1 1 0 0 1 1-1zm8 4l1.6 3.4 3.7.4-2.8 2.5.8 3.7-3.3-1.9-3.3 1.9.8-3.7-2.8-2.5 3.7-.4z" />
@@ -77,7 +81,7 @@ export function TabBar({ tabs, active, onChange }) {
       </svg>
       {tabs.map(t => (
         <button key={t.id} className={`tab-item${active === t.id ? ' active' : ''}`} onClick={() => onChange(t.id)}>
-          <svg viewBox="0 0 30 30" fill={`url(#${active === t.id ? 'tab-on' : 'tab-off'})`}>{TAB_ICONS[t.id]}</svg>
+          <svg viewBox="0 0 30 30" fill={`url(#${active === t.id ? 'tab-on' : 'tab-off'})`}>{TAB_ICONS[t.icon ?? t.id]}</svg>
           {t.label}
         </button>
       ))}

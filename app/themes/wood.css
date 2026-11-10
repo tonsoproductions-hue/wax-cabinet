@@ -1,0 +1,412 @@
+/* Vinyl Crate — Wood Hi-Fi theme: a 1970s walnut console with brass fittings.
+   Every rule is scoped to [data-theme="wood"]; the base look (Classic iPod)
+   is app/globals.css. See lib/themes.js for how themes are registered. */
+
+[data-theme="wood"] {
+  --walnut-deep: #1e120a;
+  --walnut-dark: #3a2314;
+  --walnut: #6b4223;
+  --walnut-light: #8c5c34;
+  --cream: #efe4cf;
+  --paper: #fbf6ea;
+  --ink: #2b1d12;
+  --ink-soft: #85735d;
+  --brass: #c9973f;
+  --brass-light: #ecc978;
+  --brass-dark: #8a6524;
+  --grain:
+    repeating-linear-gradient(91deg, rgba(0,0,0,.07) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(88.5deg, rgba(255,255,255,.035) 0 2px, transparent 2px 17px),
+    repeating-linear-gradient(90.6deg, rgba(0,0,0,.05) 0 3px, transparent 3px 41px);
+  --wood-bar: var(--grain), linear-gradient(#93623a 0%, #744a29 55%, #5c3a1f 100%);
+  --wood-dark-bar: var(--grain), linear-gradient(#4a2e1a 0%, #2c1a0e 100%);
+  --brass-btn: linear-gradient(#f3d58c 0%, #d2a24a 48%, #b9862f 52%, #c99a44 100%);
+  --heading: Rockwell, "American Typewriter", Georgia, "Times New Roman", serif;
+
+  /* The base theme's tokens, re-pointed. */
+  --ios-blue-bar: var(--wood-bar);
+  --ios-black-bar: var(--wood-dark-bar);
+  --ios-blue-btn: linear-gradient(#a8744a, #7a4d2a 50%, #6a4122 50%, #74492a);
+  --ios-done-btn: var(--brass-btn);
+  --ios-red-btn: linear-gradient(#c96a55 0%, #a8402c 50%, #96321f 50%, #9f3a26 100%);
+  --ios-gloss-blue: linear-gradient(#e0b562, #b98630);
+  --pinstripes:
+    repeating-linear-gradient(0deg, rgba(120,90,50,.045) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120,90,50,.04) 0 1px, transparent 1px 3px),
+    linear-gradient(#efe4cf, #e8dbc2);
+  --cell-border: #e3d6bd;
+  --group-border: #c4b08c;
+  --label-blue: #6a4a2c;
+  --value-blue: #8a5a1e;
+  --danger: #a8351f;
+  --font: "Avenir Next", Avenir, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+[data-theme="wood"] body {
+  color: var(--ink);
+  background-color: #17100a;
+  background-image:
+    radial-gradient(ellipse at 50% 15%, rgba(201,151,63,.16), transparent 60%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 2px, transparent 2px 9px),
+    linear-gradient(#22160d, #120b06);
+}
+
+/* ── Device frame (desktop) ─────────────────────────────────── */
+
+[data-theme="wood"] .screen { background: var(--walnut-deep); }
+@media (min-width: 640px) {
+  [data-theme="wood"] .device {
+    background: var(--grain), linear-gradient(145deg, #7d5230, #4a2d18 55%, #6b4426);
+    box-shadow:
+      0 0 0 2px #2a180c,
+      0 0 0 4px var(--brass-dark),
+      inset 0 0 0 1px rgba(255,255,255,.1),
+      0 40px 90px rgba(0,0,0,.7);
+  }
+  [data-theme="wood"] .speaker { background: linear-gradient(#1a0f07, #3a2415); }
+  [data-theme="wood"] .home-btn {
+    background: radial-gradient(circle at 50% 35%, var(--brass-light), var(--brass) 55%, var(--brass-dark));
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.5), inset 0 -2px 3px rgba(0,0,0,.35), 0 0 0 1px #2a180c, 0 2px 4px rgba(0,0,0,.5);
+  }
+  [data-theme="wood"] .home-btn::after { border-color: rgba(60,36,10,.45); border-radius: 50%; inset: 21px; }
+  [data-theme="wood"] .home-btn:active { background: var(--brass-dark); }
+  [data-theme="wood"] .screen { border-color: #120a05; }
+}
+[data-theme="wood"] .status-bar { background: linear-gradient(#2c1a0e, #170d06); color: var(--cream); text-shadow: none; }
+[data-theme="wood"] .signal i, [data-theme="wood"] .status-bar .battery i { background: var(--cream); }
+[data-theme="wood"] .status-bar .battery { border-color: var(--cream); }
+[data-theme="wood"] .status-bar .battery::after { background: var(--cream); }
+
+/* ── Bars and bar buttons ───────────────────────────────────── */
+
+[data-theme="wood"] .nav-bar {
+  border-top: 1px solid rgba(255,220,170,.28);
+  border-bottom: 1px solid #1c1009;
+  box-shadow: 0 1px 3px rgba(0,0,0,.35);
+}
+[data-theme="wood"] .nav-bar.black { border-top-color: rgba(255,220,170,.14); border-bottom-color: #000; }
+[data-theme="wood"] .nav-bar h1 {
+  font-family: var(--heading);
+  font-size: 19px;
+  letter-spacing: .02em;
+  color: #f6e7c8;
+  text-shadow: 0 -1px 0 rgba(0,0,0,.6);
+}
+[data-theme="wood"] .bar-btn {
+  border-color: #2e1b0d;
+  color: #f6e7c8;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255,225,180,.3), 0 1px 0 rgba(255,225,180,.15);
+}
+[data-theme="wood"] .bar-btn.done { border-color: #6d4d17; color: #3a2508; text-shadow: 0 1px 0 rgba(255,240,200,.6); }
+[data-theme="wood"] .nav-bar.black .bar-btn { background: linear-gradient(#6a4528, #3c2413 50%, #2f1b0d 50%, #382111); border-color: #0d0703; }
+[data-theme="wood"] .bar-btn.back { box-shadow: inset 0 1px 0 rgba(255,225,180,.3), inset 0 -1px 0 rgba(0,0,0,.35); }
+
+[data-theme="wood"] .tab-bar {
+  background: var(--grain), linear-gradient(#4a2e1a 0, #2a180c 100%);
+  border-top: 1px solid var(--brass-dark);
+  box-shadow: inset 0 1px 0 rgba(255,220,170,.12);
+}
+[data-theme="wood"] .tab-item { color: #a58d6e; font-family: var(--font); letter-spacing: .02em; }
+[data-theme="wood"] .tab-item.active { background: rgba(0,0,0,.32); color: var(--brass-light); box-shadow: inset 0 1px 2px rgba(0,0,0,.5), 0 1px 0 rgba(255,220,170,.1); }
+/* Tab icon gradients are SVG <stop>s; CSS wins over their attributes. */
+[data-theme="wood"] #tab-on stop:nth-child(1) { stop-color: #fff1c9; }
+[data-theme="wood"] #tab-on stop:nth-child(2) { stop-color: #ecc978; }
+[data-theme="wood"] #tab-on stop:nth-child(3) { stop-color: #d2a24a; }
+[data-theme="wood"] #tab-on stop:nth-child(4) { stop-color: #b07f2c; }
+[data-theme="wood"] #tab-off stop:nth-child(1) { stop-color: #b39a7a; }
+[data-theme="wood"] #tab-off stop:nth-child(2) { stop-color: #6f593f; }
+
+/* ── Grouped screens (Import, Settings, sign-in) ─────────────── */
+
+[data-theme="wood"] .group-label { font-family: var(--heading); font-size: 16px; text-shadow: 0 1px 0 rgba(255,250,235,.8); }
+[data-theme="wood"] .group-footer { text-shadow: 0 1px 0 rgba(255,250,235,.8); color: #7a6247; }
+[data-theme="wood"] .group {
+  background: var(--paper);
+  border-radius: 8px;
+  box-shadow: 0 1px 0 rgba(255,250,235,.8), 0 2px 5px rgba(90,60,25,.12);
+}
+[data-theme="wood"] .cell, [data-theme="wood"] a.cell { color: var(--ink); font-weight: 600; }
+[data-theme="wood"] .cell.danger { color: var(--danger); }
+[data-theme="wood"] button.cell:disabled { color: #b8a98f; }
+[data-theme="wood"] .cell small { color: var(--ink-soft); }
+[data-theme="wood"] button.cell:not(:disabled):active,
+[data-theme="wood"] label.cell.tappable:active,
+[data-theme="wood"] a.cell:active { color: #2b1a05; }
+[data-theme="wood"] button.cell:not(:disabled):active small,
+[data-theme="wood"] label.cell.tappable:active small { color: #4a3210; }
+[data-theme="wood"] .chevron path { stroke: #b39a72; }
+[data-theme="wood"] .photo-cell.dragging { background: #f3e3bd; }
+[data-theme="wood"] .photo-icon { background: linear-gradient(#f4e7c8, #d9c193); border-color: #a88d5c; box-shadow: inset 0 1px 0 #fff8e6, 0 1px 2px rgba(60,40,10,.25); }
+[data-theme="wood"] .photo-icon svg { fill: #6b4a24; }
+[data-theme="wood"] .thumb { background: #e2d5ba; border-color: rgba(60,40,10,.25); }
+[data-theme="wood"] .search-thumb { background: linear-gradient(#f6ecd4, #e2d2ae); }
+[data-theme="wood"] .field input::placeholder { color: #bfae90; }
+[data-theme="wood"] .field.compose input { color: var(--ink); }
+[data-theme="wood"] .track-cell .pos, [data-theme="wood"] .track-cell .dur { color: var(--ink-soft); }
+
+[data-theme="wood"] .cell-btn, [data-theme="wood"] .gloss-btn {
+  border-color: #a88d5c;
+  background: linear-gradient(#fffaf0 0%, #f3e7cc 50%, #e8d8b5 50%, #efe2c4 100%);
+  color: #5a3d1c;
+  text-shadow: 0 1px 0 #fffaf0;
+}
+[data-theme="wood"] .cell-btn:not(:disabled):active, [data-theme="wood"] .gloss-btn:active { background: linear-gradient(#dccba6, #efe2c4); }
+[data-theme="wood"] .cell-btn:disabled { color: #bfae90; }
+
+[data-theme="wood"] .big-btn {
+  border-color: #6d4d17;
+  color: #3a2508;
+  font-family: var(--heading);
+  letter-spacing: .02em;
+  text-shadow: 0 1px 0 rgba(255,240,200,.65);
+  box-shadow: inset 0 1px 0 rgba(255,250,225,.6), 0 1px 0 rgba(255,250,235,.5), 0 2px 4px rgba(60,40,10,.2);
+}
+[data-theme="wood"] .big-btn.red { border-color: #5e1d10; color: #fff3e6; text-shadow: 0 -1px 0 rgba(0,0,0,.45); }
+
+[data-theme="wood"] .progress { border-color: #a88d5c; background: linear-gradient(#d8c8a4, #fbf6ea); }
+[data-theme="wood"] .spinner i { background: #7a5a34; }
+[data-theme="wood"] .spinner.light i { background: var(--cream); }
+[data-theme="wood"] .check { color: var(--brass-dark); }
+
+[data-theme="wood"] .ios-switch { border-color: #a88d5c; border-radius: 14px; background: #e8dcc2; }
+[data-theme="wood"] .ios-switch-track span:first-child { background: linear-gradient(#b9862f, #e0b562); color: #3a2508; text-shadow: 0 1px 0 rgba(255,240,200,.5); }
+[data-theme="wood"] .ios-switch-track span:last-child { background: linear-gradient(#ddd0b3, #f7efdc); color: var(--ink-soft); }
+[data-theme="wood"] .ios-switch-knob { border-color: #a88d5c; border-radius: 14px; background: linear-gradient(#e9dcc0, #fffaf0); }
+
+/* ── Albums list ─────────────────────────────────────────────── */
+
+[data-theme="wood"] .albums { background: var(--paper); }
+[data-theme="wood"] .search-bar { background: var(--grain), linear-gradient(#a57a50, #8a6038); border-top-color: rgba(255,225,180,.3); border-bottom-color: #5c3a1f; }
+[data-theme="wood"] .search-field { background: #fffaf0; border-color: #5c3a1f; box-shadow: inset 0 1px 3px rgba(60,35,10,.4); }
+[data-theme="wood"] .search-field input { color: var(--ink); }
+[data-theme="wood"] .scope-bar { background: #8a6038; border-bottom-color: #5c3a1f; }
+[data-theme="wood"] .scope-bar button {
+  border-color: #5c3a1f;
+  background: linear-gradient(#fffaf0 0%, #f1e4c6 50%, #e6d5b0 50%, #ecdfc0 100%);
+  color: #5a3d1c;
+  text-shadow: 0 1px 0 #fffaf0;
+}
+[data-theme="wood"] .scope-bar button.on {
+  background: var(--brass-btn);
+  color: #3a2508;
+  text-shadow: 0 1px 0 rgba(255,240,200,.6);
+  box-shadow: inset 0 1px 3px rgba(60,35,10,.35);
+}
+[data-theme="wood"] .section-header {
+  background: linear-gradient(#b89a6c, #cdb58c);
+  border-color: #a88d5c;
+  color: #3d2812;
+  font-family: var(--heading);
+  font-size: 15px;
+  text-shadow: 0 1px 0 rgba(255,245,220,.5);
+}
+[data-theme="wood"] .shuffle-row, [data-theme="wood"] .album-row { background: var(--paper); border-bottom-color: var(--cell-border); color: var(--ink); }
+[data-theme="wood"] .shuffle-row svg { stroke: var(--brass-dark); }
+[data-theme="wood"] .shuffle-row:active, [data-theme="wood"] .album-row:active { background: var(--ios-gloss-blue); color: #2b1a05; }
+[data-theme="wood"] .shuffle-row:active svg { stroke: #2b1a05; }
+[data-theme="wood"] .album-row strong { color: var(--ink); }
+[data-theme="wood"] .album-row small { color: var(--ink-soft); }
+[data-theme="wood"] .album-row:active strong, [data-theme="wood"] .album-row:active small, [data-theme="wood"] .album-row:active .fav-star { color: #2b1a05; }
+/* Covers sit like sleeves: inset from the edge with a soft shadow. */
+[data-theme="wood"] .album-row { padding-left: 8px; }
+[data-theme="wood"] .album-row img, [data-theme="wood"] .album-row .art-ph { width: 48px; height: 48px; border-radius: 2px; box-shadow: 0 1px 3px rgba(40,25,5,.4); }
+[data-theme="wood"] .fav-star { color: var(--brass); }
+[data-theme="wood"] .section-index button { color: #8a6a44; }
+[data-theme="wood"] .list-footer, [data-theme="wood"] .empty strong { color: var(--ink-soft); }
+[data-theme="wood"] .empty strong { font-family: var(--heading); }
+[data-theme="wood"] .empty small, [data-theme="wood"] .list-footer small { color: #9c8a70; }
+[data-theme="wood"] .delete-btn { border-color: #5e1d10; }
+[data-theme="wood"] .minus-btn { border-color: var(--paper); background: linear-gradient(#c96a55, #96321f); }
+
+/* ── Now Playing ─────────────────────────────────────────────── */
+
+[data-theme="wood"] .detail {
+  background:
+    radial-gradient(ellipse at 50% 0, rgba(236,201,120,.16), transparent 55%),
+    var(--grain),
+    linear-gradient(#3a2314, #1e120a 70%);
+  color: #f6e7c8;
+}
+[data-theme="wood"] .detail-art img, [data-theme="wood"] .detail-art .art-ph { box-shadow: 0 10px 28px rgba(0,0,0,.6), 0 0 0 1px rgba(255,225,180,.12); border-radius: 2px; }
+/* A sleeve on a shelf, not a glossy reflection. */
+[data-theme="wood"] .detail .reflection { visibility: hidden; height: 52px; }
+[data-theme="wood"] .detail-titles strong { font-family: var(--heading); font-size: 20px; }
+[data-theme="wood"] .detail-titles span { color: #d5bf98; }
+[data-theme="wood"] .detail-titles small { color: #a58d6e; }
+[data-theme="wood"] .pill-btn { border-color: #6a4a28; background: linear-gradient(#5a3a20, #36200f); color: #ecd9b4; }
+[data-theme="wood"] .pill-btn.on { color: var(--brass-light); border-color: var(--brass-dark); }
+[data-theme="wood"] .dark-list { border-color: #5a3d22; border-radius: 6px; }
+[data-theme="wood"] .dark-row { background: rgba(0,0,0,.28); color: #f6e7c8; }
+[data-theme="wood"] .dark-row:nth-child(even) { background: rgba(0,0,0,.16); }
+[data-theme="wood"] .dark-row .key, [data-theme="wood"] .dark-row .pos, [data-theme="wood"] .dark-row .dur, [data-theme="wood"] .dark-label { color: #b39a78; }
+[data-theme="wood"] .dark-row a { color: var(--brass-light); }
+[data-theme="wood"] .art-ph { background: radial-gradient(circle, var(--brass) 0 8%, #171310 9% 40%, #2a2420 41% 42%, #171310 43% 70%, #2f2924 71%); }
+
+/* ── Alerts ──────────────────────────────────────────────────── */
+
+[data-theme="wood"] .alert {
+  border: 2px solid var(--brass);
+  background: var(--grain), linear-gradient(#7d5230, #4a2d18);
+  box-shadow: 0 0 0 1px #2a180c, 0 8px 24px rgba(0,0,0,.65);
+  color: #f6e7c8;
+}
+[data-theme="wood"] .alert::before { display: none; }
+[data-theme="wood"] .alert h2 { font-family: var(--heading); }
+[data-theme="wood"] .alert-buttons button {
+  border-color: #2a180c;
+  background: linear-gradient(rgba(255,235,200,.28), rgba(255,235,200,.08));
+  color: #f6e7c8;
+  box-shadow: inset 0 1px 0 rgba(255,235,200,.3);
+}
+[data-theme="wood"] .alert-buttons button.primary { background: var(--brass-btn); color: #3a2508; text-shadow: 0 1px 0 rgba(255,240,200,.6); border-color: #6d4d17; }
+[data-theme="wood"] .alert-buttons button:active { filter: brightness(.85); }
+
+/* ── Turntable (the browse tab; components/Deck.js) ──────────── */
+
+.deck-stage {
+  flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 0 14px;
+  background:
+    radial-gradient(ellipse at 50% 0, rgba(236,201,120,.2), transparent 60%),
+    linear-gradient(#2c1b0f, #150c06);
+}
+.deck-stage::-webkit-scrollbar { display: none; }
+
+.deck {
+  width: min(330px, calc(100% - 24px));
+  flex: 0 0 auto;
+  padding: 16px 14px 14px;
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(91deg, rgba(0,0,0,.07) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(88.5deg, rgba(255,255,255,.035) 0 2px, transparent 2px 17px),
+    repeating-linear-gradient(90.6deg, rgba(0,0,0,.05) 0 3px, transparent 3px 41px),
+    linear-gradient(160deg, #9a6a40, #6b4223 55%, #5a3619);
+  box-shadow:
+    inset 0 1px 0 rgba(255,225,180,.35),
+    inset 0 -3px 5px rgba(0,0,0,.35),
+    0 0 0 1px #24140a,
+    0 18px 36px rgba(0,0,0,.6);
+}
+
+.deck-top { position: relative; display: flex; justify-content: flex-start; padding-left: 6px; height: 196px; }
+.deck-platter {
+  width: 196px; height: 196px; padding: 0; border: none; border-radius: 50%;
+  background: radial-gradient(circle, #cfc6b8 0 62%, #8f8778 63%, #6e675b 100%);
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,.25), 0 3px 8px rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: center;
+}
+.deck-record {
+  width: 180px; height: 180px; border-radius: 50%; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    conic-gradient(from 20deg, rgba(255,255,255,.14), transparent 12%, transparent 46%, rgba(255,255,255,.12) 52%, transparent 62%, transparent 96%, rgba(255,255,255,.14)),
+    repeating-radial-gradient(circle, #0c0c0c 0 1.2px, #1d1d1d 1.2px 2.4px);
+  box-shadow: 0 1px 3px rgba(0,0,0,.6);
+  animation: deck-drop .35s ease-out, deck-spin 3.6s linear .35s infinite;
+}
+.deck-label {
+  width: 72px; height: 72px; border-radius: 50%; overflow: hidden;
+  background: #c9973f;
+  box-shadow: 0 0 0 2px #0c0c0c, 0 0 0 3px rgba(255,255,255,.08);
+}
+.deck-label img, .deck-label .art-ph { width: 100%; height: 100%; object-fit: cover; display: block; }
+.deck-spindle {
+  position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff, #b9b9b9 60%, #6d6d6d);
+  box-shadow: 0 1px 1px rgba(0,0,0,.5);
+}
+.deck-platter:active .deck-record { filter: brightness(1.15); }
+@keyframes deck-spin { to { transform: rotate(360deg); } }
+@keyframes deck-drop { from { transform: scale(1.08); opacity: .3; } }
+
+/* Tonearm: a brass pivot top-right with the arm reaching onto the record. */
+.deck-arm {
+  position: absolute; right: 12px; top: 6px; width: 40px; height: 40px; border-radius: 50%;
+  background: radial-gradient(circle at 45% 35%, #f3d58c, #c9973f 55%, #8a6524);
+  box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5);
+  pointer-events: none;
+}
+.deck-arm i {
+  position: absolute; left: 17px; top: 18px; width: 6px; height: 132px; border-radius: 3px;
+  background: linear-gradient(90deg, #8f8f8f, #f0f0f0 45%, #9a9a9a);
+  box-shadow: 1px 2px 3px rgba(0,0,0,.45);
+  transform-origin: 3px 2px; transform: rotate(24deg);
+}
+.deck-arm i::after {
+  content: ''; position: absolute; left: -5px; bottom: -4px; width: 16px; height: 24px; border-radius: 3px;
+  background: linear-gradient(#3a3a3a, #111);
+  box-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+
+/* Engraved brass name plate. */
+.deck-plate {
+  margin: 14px 2px 12px; padding: 7px 12px; border-radius: 4px; text-align: center;
+  background: linear-gradient(#f3d58c, #c9973f 60%, #b5842f);
+  border: 1px solid #6d4d17;
+  box-shadow: inset 0 1px 0 rgba(255,250,225,.7), 0 1px 2px rgba(0,0,0,.4);
+  color: #3a2508;
+}
+.deck-plate strong, .deck-plate span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 0 rgba(255,240,200,.55); }
+.deck-plate strong { font-family: Rockwell, "American Typewriter", Georgia, serif; font-size: 15px; }
+.deck-plate span { font-size: 12px; margin-top: 1px; color: #5a3d12; }
+
+/* The crate: sleeves in a felt-lined well. The caption is on the plate. */
+.deck-crate {
+  height: 122px; border-radius: 6px; overflow: hidden; display: flex;
+  background: linear-gradient(#0d0906, #1c130c);
+  box-shadow: inset 0 3px 8px rgba(0,0,0,.8), 0 1px 0 rgba(255,225,180,.25);
+}
+.deck-crate .cf-caption { display: none; }
+.deck-crate .cf-empty { color: #8a7a66; }
+.deck-crate .cf-item .reflection { opacity: .3; }
+
+.deck-controls { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding: 0 4px; }
+.deck-key {
+  width: 86px; height: 34px; border-radius: 6px; border: 1px solid #1c1009;
+  background: linear-gradient(#fbf3de, #e2d2ae 55%, #d2c097);
+  color: #4a3115; font-size: 12px; font-weight: bold; letter-spacing: .03em;
+  text-shadow: 0 1px 0 rgba(255,250,235,.8);
+  box-shadow: inset 0 1px 0 #fff, 0 2px 0 #24140a, 0 3px 5px rgba(0,0,0,.4);
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.deck-key:not(:disabled):active { transform: translateY(2px); box-shadow: inset 0 1px 0 #fff, 0 0 0 #24140a; }
+.deck-key:disabled { opacity: .55; cursor: default; }
+.deck-knob {
+  width: 84px; height: 84px; border-radius: 50%; padding: 7px; flex: 0 0 auto;
+  background: radial-gradient(circle, #24140a 0 60%, #3a2314 61%);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.7), 0 1px 0 rgba(255,225,180,.3);
+  touch-action: none; user-select: none; cursor: grab; outline: none;
+}
+.deck-knob:focus-visible { box-shadow: 0 0 0 2px #ecc978; }
+.deck-knob-cap {
+  display: block; width: 100%; height: 100%; border-radius: 50%; position: relative;
+  background:
+    repeating-conic-gradient(rgba(0,0,0,.14) 0 3deg, transparent 3deg 9deg),
+    radial-gradient(circle at 42% 32%, #fbe6a8, #c9973f 55%, #8a6524);
+  box-shadow: 0 3px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,250,225,.7);
+  transition: transform .18s ease-out;
+}
+.deck-knob-cap i { position: absolute; left: 50%; top: 5px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: #3a2508; }
+.deck-hint { margin-top: 12px; color: rgba(246,231,200,.5); font-size: 11px; text-align: center; padding: 0 30px; line-height: 1.4; }
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-record { animation: none; }
+  .deck-knob-cap { transition: none; }
+}
+
+/* ── Inside the iOS app ──────────────────────────────────────── */
+
+[data-theme="wood"].native .screen, [data-theme="wood"].native body { background: var(--walnut-deep); }
+@media (min-width: 640px) {
+  [data-theme="wood"].native .device { background: var(--walnut-deep); box-shadow: none; }
+}
+
+/* ── Privacy / Support / Terms pages ─────────────────────────── */
+
+[data-theme="wood"] .info-page article { background: var(--paper); color: var(--ink); }
+[data-theme="wood"] .info-page h1, [data-theme="wood"] .info-page h2 { font-family: var(--heading); }
+[data-theme="wood"] .info-page th { background: #f1e6cc; }
+[data-theme="wood"] .info-page .updated, [data-theme="wood"] .info-nav { color: var(--ink-soft); }
