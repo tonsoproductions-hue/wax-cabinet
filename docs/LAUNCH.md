@@ -1,13 +1,13 @@
-# Vinyl Crate: App Store launch and the first 500 users
+# Vinyl Sleeve: App Store launch and the first 500 users
 
-This is the runbook for taking Vinyl Crate from the website to the App Store
+This is the runbook for taking Vinyl Sleeve from the website to the App Store
 and keeping it healthy up to roughly 500 users. Everything in the codebase is
 done; the steps below are the accounts, dashboards and builds that need you.
 
 ## How it fits together
 
 ```
- iPhone app (Capacitor)               Website (vinylcrate.vercel.app)
+ iPhone app (Capacitor)               Website (vinylsleeve.vercel.app)
  ├─ static bundle in the app          ├─ same pages, served by Vercel
  └─ calls the API over HTTPS ──┐      └─ /privacy, /support, share links
                                ▼
@@ -49,8 +49,8 @@ API files are named `route.server.js`; the iOS build leaves them out (see
   ~150 KB and capped at 2 MB; collections load in pages past Supabase's
   1,000-row limit.
 - **Native app.** Capacitor 8 iOS project (`ios/`), iPhone-only, bundle id
-  `com.tonsoproductions.vinylcrate`, camera and photo permissions, haptic
-  click wheel, native share sheet, CSV export to Files, `vinylcrate://`
+  `com.tonsoproductions.vinylsleeve`, camera and photo permissions, haptic
+  click wheel, native share sheet, CSV export to Files, `vinylsleeve://`
   sign-in links, icon and splash screen.
 - **Two looks.** Settings → Appearance switches the whole interface between
   *Classic iPod* and *Wood Hi-Fi* (walnut, brass and a turntable in place of
@@ -65,6 +65,26 @@ API files are named `route.server.js`; the iOS build leaves them out (see
 
 ---
 
+## 0. The rename from Vinyl Crate (≈5 minutes)
+
+The app was called Vinyl Crate until November 2026 (another app has that name
+on the App Store). The code, bundle id (`com.tonsoproductions.vinylsleeve`)
+and sign-in link scheme (`vinylsleeve://`) already use the new name. Three
+settings live outside the code:
+
+1. **Vercel address.** Project → Settings → Domains → add
+   `vinylsleeve.vercel.app`. Keep `vinylcrate.vercel.app` so old share links
+   still open. Optionally rename the project under Settings → General.
+2. **Vercel setting.** Environment Variables → set `NEXT_PUBLIC_SITE_URL` to
+   `https://vinylsleeve.vercel.app`, then redeploy. Share links and the
+   link-preview icon use it.
+3. **Supabase.** Authentication → URL Configuration → set the Site URL to
+   `https://vinylsleeve.vercel.app` and add `https://vinylsleeve.vercel.app/**`
+   and `vinylsleeve://auth-callback` to the Redirect URLs (leave the old ones).
+
+Until step 1 is done the site keeps working at `vinylcrate.vercel.app`; only
+`npm run build:ios` needs the new address to exist.
+
 ## 1. Supabase (≈20 minutes)
 
 1. **Run the migration.** SQL Editor → paste `supabase/migrations/003_multi_user.sql` → Run.
@@ -72,8 +92,8 @@ API files are named `route.server.js`; the iOS build leaves them out (see
    Then run `supabase/migrations/004_favorites_and_wants.sql` the same way (favorites and the wish list).
 2. **Open sign-ups.** Authentication → Sign In / Providers → Email → turn **Allow new users to sign up** back on.
 3. **Redirect URLs.** Authentication → URL Configuration → add
-   `vinylcrate://auth-callback` (the app) and `https://vinylcrate.vercel.app/**` alongside
-   `http://localhost:3000/**`. Set the Site URL to `https://vinylcrate.vercel.app`.
+   `vinylsleeve://auth-callback` (the app) and `https://vinylsleeve.vercel.app/**` alongside
+   `http://localhost:3000/**`. Set the Site URL to `https://vinylsleeve.vercel.app`.
 4. **Put the code in the email.** Authentication → Emails → *Magic Link* template: add a line such as
    `<p>Or enter this code in the app: <strong>{{ .Token }}</strong></p>`.
 5. **Custom email sender (required before launch).** Supabase's built-in email
@@ -100,15 +120,15 @@ Project → Settings → Environment Variables (Production), using `.env.example
 | `SUPABASE_SERVICE_ROLE_KEY` | from Supabase step 7 |
 | `VISION_MODELS` | `claude-haiku-5-5,claude-sonnet-5-5` |
 | `IDENTIFY_DAILY_LIMIT` | `40` |
-| `NEXT_PUBLIC_SITE_URL` | `https://vinylcrate.vercel.app` (or your domain) |
-| `NEXT_PUBLIC_FEATURED_OWNER` | your user id (Supabase → Authentication → Users), so the website still opens on your crate |
+| `NEXT_PUBLIC_SITE_URL` | `https://vinylsleeve.vercel.app` (or your domain) |
+| `NEXT_PUBLIC_FEATURED_OWNER` | your user id (Supabase → Authentication → Users), so the home page's live app and "browse a real collection" show your crate |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | a support address you're happy to publish |
 | `GEMINI_API_KEY` | delete, no longer used |
 
 Then redeploy. Also:
-- **Plan.** Hobby is for non-commercial use; if Vinyl Crate earns money, move
+- **Plan.** Hobby is for non-commercial use; if Vinyl Sleeve earns money, move
   to Pro ($20/month). The daily health cron works on either.
-- **Domain (optional).** Settings → Domains for e.g. `vinylcrate.app`; then
+- **Domain (optional).** Settings → Domains for e.g. `vinylsleeve.app`; then
   update `NEXT_PUBLIC_SITE_URL`, the Supabase Site URL and `build:ios`'s
   `NEXT_PUBLIC_API_BASE`.
 
@@ -144,10 +164,10 @@ Then redeploy. Also:
 ## 5. App Store Connect
 
 1. Join the **Apple Developer Program** ($99/year) at developer.apple.com.
-2. App Store Connect → Apps → **+** → New App: iOS, name *Vinyl Crate* (pick an
-   alternative if taken), bundle id `com.tonsoproductions.vinylcrate`, SKU `vinylcrate`.
+2. App Store Connect → Apps → **+** → New App: iOS, name *Vinyl Sleeve* (pick an
+   alternative if taken), bundle id `com.tonsoproductions.vinylsleeve`, SKU `vinylsleeve`.
 3. **App information:** category Music (secondary: Lifestyle). Privacy Policy URL
-   `https://vinylcrate.vercel.app/privacy/`; Support URL `…/support/`. Deploy the
+   `https://vinylsleeve.vercel.app/privacy/`; Support URL `…/support/`. Deploy the
    website first so these pages (and `/terms/`, `/delete-account/`) are live
    before you submit; reviewers open them.
 4. **App Privacy:** copy the answers from `docs/APP_PRIVACY.md` (data types, all
@@ -177,7 +197,7 @@ Then redeploy. Also:
   review still pushes back, rename the tab (e.g. *Flip*) in the `ipod` entry
   of `lib/themes.js` and make the player more stylised.
 - **Guideline 4.2 (minimum functionality).** Web-based apps need to feel like
-  apps. Vinyl Crate's camera import, haptics, share sheet, Files export, shake to
+  apps. Vinyl Sleeve's camera import, haptics, share sheet, Files export, shake to
   shuffle and offline-bundled interface help; mention them in the review notes.
 
 ## 6. Running it: 500 users

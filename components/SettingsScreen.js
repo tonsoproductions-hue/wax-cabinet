@@ -179,7 +179,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
     }
     const url = shareUrl(shareOwnerId, shareGenre)
     const what = shareGenre === 'All' ? 'vinyl collection' : `${shareGenre} records`
-    const result = await shareLink({ title: 'Vinyl Crate', text: `Browse my ${what} on Vinyl Crate`, url })
+    const result = await shareLink({ title: 'Vinyl Sleeve', text: `Browse my ${what} on Vinyl Sleeve`, url })
     if (result === 'copied') ask('Link Copied', url)
     else if (result === 'failed') ask('Share Link', url)
   }
@@ -293,7 +293,7 @@ export default function SettingsScreen({ user, view, setView, onClose, albums, s
         )}
 
         <div className="group-footer" style={{ marginTop: 8 }}>
-          Vinyl Crate · Covers read by Claude · Pressings from Discogs
+          Vinyl Sleeve · Covers read by Claude · Pressings from Discogs
         </div>
       </div>
     </>

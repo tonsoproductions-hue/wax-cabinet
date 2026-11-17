@@ -1,4 +1,4 @@
-export const metadata = { title: 'Delete Your Account · Vinyl Crate' }
+export const metadata = { title: 'Delete Your Account · Vinyl Sleeve' }
 
 const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL
 
@@ -10,7 +10,7 @@ export default function DeleteAccount() {
 
       <h2>Delete your account in the app</h2>
       <ol>
-        <li>Open Vinyl Crate and tap the Settings gear (top left).</li>
+        <li>Open Vinyl Sleeve and tap the Settings gear (top left).</li>
         <li>Scroll to the bottom and tap <em>Delete Account</em>.</li>
         <li>Confirm when asked.</li>
       </ol>

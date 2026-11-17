@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useEffectEvent, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useState, useEffect, useLayoutEffect, useEffectEvent, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
 import { supabase, ownCoverPath, authHeaders, apiUrl } from '@/lib/supabase'
 import { rotateImage } from '@/lib/images'
 import { sortAlbums, loadDemoAlbums, loadCollection, pickRandom } from '@/lib/albums'
@@ -10,6 +10,8 @@ import AlbumDetail from '@/components/AlbumDetail'
 import Nano, { NANO_COLORS } from '@/components/Nano'
 import Deck from '@/components/Deck'
 import SettingsScreen from '@/components/SettingsScreen'
+import Landing from '@/components/Landing'
+import { LANDING_ENABLED, skipLanding } from '@/lib/landing'
 import { initNative } from '@/lib/native'
 import { useTheme } from '@/lib/use-theme'
 
@@ -43,8 +45,8 @@ function Welcome({ onSignIn, onDemo }) {
   return (
     <div className="scroll pinstripes">
       <div className="empty">
-        <strong>Welcome to Vinyl Crate</strong>
-        <small>Photograph a record cover and Vinyl Crate identifies it, finds the pressing on Discogs and files it in your crate.</small>
+        <strong>Welcome to Vinyl Sleeve</strong>
+        <small>Photograph a record cover and Vinyl Sleeve identifies it, finds the pressing on Discogs and files it in your crate.</small>
       </div>
       <button className="big-btn" onClick={onSignIn}>Sign In or Create Account</button>
       <div className="button-row" style={{ marginTop: 12 }}>
@@ -90,6 +92,12 @@ export default function Home() {
   const [flowIndex, setFlowIndex] = useState(0)
   const [nanoColor, setNanoColor] = useState(() => typeof window === 'undefined' ? 'silver' : savedNanoColor())
   const [alert, setAlert] = useState(null)
+  // The public home page, for signed-out visitors to the website. The boot
+  // script in <head> has already ruled out everyone else (lib/landing.js);
+  // the server renders the page for all, so that is only read after hydration.
+  // `entered` is a phone visitor tapping through to the app.
+  const landingSkipped = useSyncExternalStore(noSubscribe, skipLanding, () => false)
+  const [entered, setEntered] = useState(false)
   const theme = useTheme()
   const Browser = BROWSERS[theme.browse.screen]
   const browseTab = { id: 'coverflow', label: theme.browse.label, icon: theme.browse.icon }
@@ -161,7 +169,7 @@ export default function Home() {
       })
       .catch(async err => {
         console.error('Loading collection failed:', err)
-        const choice = await ask('Cannot Connect', 'Vinyl Crate couldn’t reach its database. You can browse a demo crate from Discogs instead.', ['OK', 'Show Demo'])
+        const choice = await ask('Cannot Connect', 'Vinyl Sleeve couldn’t reach its database. You can browse a demo crate from Discogs instead.', ['OK', 'Show Demo'])
         if (choice === 'Show Demo') showDemo()
       })
     return () => { cancelled = true }
@@ -306,6 +314,26 @@ export default function Home() {
     setDetail(record)
   }
 
+  const showLanding = LANDING_ENABLED && !landingSkipped && !user && !entered
+  // app/landing.css lays the page out from this mark. skipLanding() is checked
+  // again here because the hydration pass still sees the server's answer.
+  useLayoutEffect(() => {
+    document.documentElement.toggleAttribute('data-landing', showLanding && !skipLanding())
+  }, [showLanding])
+
+  // The home page's buttons. A phone has no room for the page and the app
+  // together, so the app takes over; wider screens already show it running
+  // in the device frame.
+  function enterApp(then) {
+    if (window.matchMedia('(min-width: 640px)').matches) {
+      document.querySelector('.device')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    } else {
+      setEntered(true)
+      window.scrollTo(0, 0)
+    }
+    then()
+  }
+
   // Your wish list inside Import, or the Wish List tab on a share link.
   const showWish = (tab === 'import' && wishOpen && canEdit) || tab === 'wishlist'
 
@@ -352,77 +380,85 @@ export default function Home() {
   }
 
   return (
-    <div className="device">
-      <div className="device-top"><span className="speaker" /></div>
-      <div className="screen">
-        <StatusBar />
-        {nav}
-        {settingsOpen ? (
-          <SettingsScreen
-            user={user}
-            view={settingsView}
-            setView={setSettingsView}
-            onClose={() => setSettingsOpen(false)}
-            albums={albums}
-            shareOwnerId={shareOwnerId}
-            ask={ask}
-            signInOnly={viewingShared}
-          />
-        ) : detail ? (
-          <AlbumDetail
-            key={detail.id}
-            album={detail}
-            onDelete={canManage ? a => deleteRecord(a) : null}
-            onFavorite={canManage ? toggleFavorite : null}
-            onGotIt={canManage ? gotIt : null}
-            // Only photos you uploaded; Discogs covers are already upright.
-            onRotate={canEdit && ownCoverPath(detail.image_url, user?.id) ? rotateCover : null}
-          />
-        ) : showWish ? (
-          <AlbumList
-            kind="wishlist"
-            albums={wishList}
-            readOnly={viewingShared}
-            editing={editing && canManage}
-            onOpen={openAlbum}
-            onDelete={a => deleteRecord(a, { confirm: false })}
-          />
-        ) : tab === 'import' ? (
-          canEdit
-            ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} wishCount={wishList.length} onOpenWishList={() => setWishOpen(true)} />
-            : <SignInPrompt onSignIn={() => openSettings('signin')} />
-        ) : showWelcome && tab !== 'import' ? (
-          <Welcome onSignIn={() => openSettings('signin')} onDemo={showDemo} />
-        ) : tab === 'albums' || (viewingShared && tab !== 'coverflow') ? (
-          <AlbumList
-            // Remount once the URL is read so a shared link's genre takes effect.
-            key={sharedGenre ?? 'all'}
-            albums={albums}
-            initialGenre={sharedGenre}
-            editing={editing && canManage}
-            onOpen={openAlbum}
-            onDelete={a => deleteRecord(a, { confirm: false })}
-            onShuffle={pool => { requestMotionAccess(); shuffle(pool) }}
-          />
-        ) : (
-          <Browser
-            albums={albums}
-            index={flowAt}
-            setIndex={setFlowIndex}
-            color={nanoColor}
-            setColor={chooseNanoColor}
-            onSelect={openAlbum}
-            onMenu={() => switchTab('albums')}
-            onShuffle={() => nextPick(albums)}
-          />
-        )}
-        {/* Shared links are browse-only: Wish List, Albums and the browse tab. */}
-        <TabBar tabs={tabs} active={tab} onChange={switchTab} />
-        <AlertView alert={alert} onChoose={choose} />
+    <Landing
+      active={showLanding}
+      featured={!!FEATURED_OWNER}
+      onSignIn={() => enterApp(() => openSettings('signin'))}
+      onDemo={() => enterApp(() => { switchTab('albums'); showDemo() })}
+      onBrowse={() => enterApp(() => { setDemoCrate(false); switchTab('albums') })}
+    >
+      <div className="device">
+        <div className="device-top"><span className="speaker" /></div>
+        <div className="screen">
+          <StatusBar />
+          {nav}
+          {settingsOpen ? (
+            <SettingsScreen
+              user={user}
+              view={settingsView}
+              setView={setSettingsView}
+              onClose={() => setSettingsOpen(false)}
+              albums={albums}
+              shareOwnerId={shareOwnerId}
+              ask={ask}
+              signInOnly={viewingShared}
+            />
+          ) : detail ? (
+            <AlbumDetail
+              key={detail.id}
+              album={detail}
+              onDelete={canManage ? a => deleteRecord(a) : null}
+              onFavorite={canManage ? toggleFavorite : null}
+              onGotIt={canManage ? gotIt : null}
+              // Only photos you uploaded; Discogs covers are already upright.
+              onRotate={canEdit && ownCoverPath(detail.image_url, user?.id) ? rotateCover : null}
+            />
+          ) : showWish ? (
+            <AlbumList
+              kind="wishlist"
+              albums={wishList}
+              readOnly={viewingShared}
+              editing={editing && canManage}
+              onOpen={openAlbum}
+              onDelete={a => deleteRecord(a, { confirm: false })}
+            />
+          ) : tab === 'import' ? (
+            canEdit
+              ? <ImportScreen user={user} onAdded={handleAdded} ask={ask} wishCount={wishList.length} onOpenWishList={() => setWishOpen(true)} />
+              : <SignInPrompt onSignIn={() => openSettings('signin')} />
+          ) : showWelcome && tab !== 'import' ? (
+            <Welcome onSignIn={() => openSettings('signin')} onDemo={showDemo} />
+          ) : tab === 'albums' || (viewingShared && tab !== 'coverflow') ? (
+            <AlbumList
+              // Remount once the URL is read so a shared link's genre takes effect.
+              key={sharedGenre ?? 'all'}
+              albums={albums}
+              initialGenre={sharedGenre}
+              editing={editing && canManage}
+              onOpen={openAlbum}
+              onDelete={a => deleteRecord(a, { confirm: false })}
+              onShuffle={pool => { requestMotionAccess(); shuffle(pool) }}
+            />
+          ) : (
+            <Browser
+              albums={albums}
+              index={flowAt}
+              setIndex={setFlowIndex}
+              color={nanoColor}
+              setColor={chooseNanoColor}
+              onSelect={openAlbum}
+              onMenu={() => switchTab('albums')}
+              onShuffle={() => nextPick(albums)}
+            />
+          )}
+          {/* Shared links are browse-only: Wish List, Albums and the browse tab. */}
+          <TabBar tabs={tabs} active={tab} onChange={switchTab} />
+          <AlertView alert={alert} onChoose={choose} />
+        </div>
+        <div className="device-bottom">
+          <button className="home-btn" aria-label="Home" onClick={() => switchTab('albums')} />
+        </div>
       </div>
-      <div className="device-bottom">
-        <button className="home-btn" aria-label="Home" onClick={() => switchTab('albums')} />
-      </div>
-    </div>
+    </Landing>
   )
 }

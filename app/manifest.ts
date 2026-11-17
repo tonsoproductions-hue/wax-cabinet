@@ -3,11 +3,11 @@ import type { MetadataRoute } from "next";
 // Static so the iOS build (output: export) can include it.
 export const dynamic = "force-static";
 
-// Lets phones install Vinyl Crate to the home screen as a full-screen app.
+// Lets phones install Vinyl Sleeve to the home screen as a full-screen app.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Vinyl Crate",
-    short_name: "Vinyl Crate",
+    name: "Vinyl Sleeve",
+    short_name: "Vinyl Sleeve",
     description: "A vinyl collection registry: photograph a cover, match the pressing on Discogs, file it away.",
     start_url: "/",
     display: "standalone",

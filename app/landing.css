@@ -1,0 +1,171 @@
+/* Vinyl Sleeve — the public home page (components/Landing.js).
+
+   Everything here applies only while <html> carries data-landing, which
+   lib/landing.js and app/page.js set for signed-out website visitors.
+   Without it the wrappers vanish and the app lays out exactly as before.
+   The page keeps the base look whatever theme the app is showing. */
+
+.lp-root, .lp-stage { display: contents; }
+.lp-copy { display: none; }
+
+/* html[...] so this outranks a theme's own body background. */
+html[data-landing] body {
+  display: block;
+  height: auto;
+  min-height: 100%;
+  padding: 0;
+  background-color: #23262b;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.12) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at 50% 20%, #3a3f47, #1b1d21 70%);
+  background-attachment: fixed;
+  color: #c9d1db;
+}
+
+/* ── Layout: one column, then copy beside the live app ───────── */
+
+[data-landing] .lp-root {
+  display: block;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 20px 0;
+}
+[data-landing] .lp-copy { display: block; }
+/* On a phone the app is the whole screen, so the buttons open it instead. */
+[data-landing] .lp-stage { display: none; }
+
+@media (min-width: 640px) {
+  [data-landing] .lp-root { padding: 0 32px; }
+  [data-landing] .lp-stage { display: flex; justify-content: center; padding: 8px 0 56px; }
+}
+
+@media (min-width: 1000px) {
+  [data-landing] .lp-root {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 404px;
+    grid-template-rows: auto auto 1fr auto;
+    column-gap: 72px;
+    max-width: 1120px;
+  }
+  [data-landing] .lp-copy { grid-column: 1; }
+  /* The app stays in view, top to bottom, while the copy scrolls past it. */
+  [data-landing] .lp-stage {
+    grid-column: 2; grid-row: 1 / -1;
+    display: block; align-self: start;
+    position: sticky; top: 0;
+    padding: 24px 0;
+  }
+}
+
+/* ── Top bar ─────────────────────────────────────────────────── */
+
+[data-landing] .lp-top { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+.lp-brand { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 19px; font-weight: bold; text-shadow: 0 -1px 0 rgba(0,0,0,.6); }
+.lp-brand img { border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.6); }
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+
+.lp-btn {
+  height: 48px; padding: 0 22px;
+  border: 1px solid #000; border-radius: 10px;
+  background: var(--ios-black-bar);
+  color: #fff; font-size: 17px; font-weight: bold;
+  text-shadow: 0 -1px 0 rgba(0,0,0,.5);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 0 rgba(255,255,255,.08);
+}
+.lp-btn.primary { background: var(--ios-done-btn); border-color: #1d3f86; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 1px 0 rgba(255,255,255,.08); }
+.lp-btn.small { height: 34px; padding: 0 14px; font-size: 14px; border-radius: 8px; }
+.lp-btn:active { filter: brightness(.82); }
+.lp-btn:focus-visible, .lp-link:focus-visible, .lp-foot a:focus-visible, .lp-faq summary:focus-visible { outline: 2px solid #9cc3ff; outline-offset: 2px; }
+.lp-link { border: none; background: none; padding: 0; font-size: inherit; color: #9cc3ff; text-decoration: underline; }
+
+.lp-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.lp-actions .lp-btn { flex: 1 1 200px; }
+
+/* ── Hero ────────────────────────────────────────────────────── */
+
+.lp-hero { padding: 12px 0 44px; }
+.lp-art { display: block; width: min(250px, 68%); margin: 0 auto 26px; filter: drop-shadow(0 14px 22px rgba(0,0,0,.5)); }
+.lp-eyebrow { margin: 0 0 10px; color: #8fa3bf; font-size: 13px; font-weight: bold; letter-spacing: .08em; text-transform: uppercase; }
+.lp-hero h1 {
+  margin: 0 0 16px;
+  color: #fff; font-size: clamp(38px, 9.5vw, 58px); line-height: 1.05; letter-spacing: -.025em;
+  text-shadow: 0 -1px 0 rgba(0,0,0,.6);
+  text-wrap: balance;
+}
+.lp-lede { margin: 0 0 26px; font-size: 19px; line-height: 1.5; }
+.lp-note { margin: 16px 0 0; color: #99a3ae; font-size: 15px; line-height: 1.5; }
+/* Points at the live app wherever it sits: below (tablet) or beside (desktop). */
+.lp-live { display: none; margin: 22px 0 0; color: #fff; font-size: 15px; font-weight: bold; }
+.lp-live::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #5fd35f; box-shadow: 0 0 6px #5fd35f; }
+
+@media (min-width: 640px) {
+  .lp-live.mid { display: block; }
+  .lp-hero { padding-bottom: 28px; }
+}
+@media (min-width: 1000px) {
+  .lp-art, .lp-live.mid { display: none; }
+  .lp-live.wide { display: block; }
+  .lp-hero { padding: 56px 0 72px; }
+  .lp-hero h1 { font-size: clamp(46px, 4.6vw, 58px); }
+}
+
+/* ── Sections ────────────────────────────────────────────────── */
+
+.lp-main section { padding: 0 0 64px; }
+.lp-main h2 { margin: 0 0 20px; color: #fff; font-size: 28px; line-height: 1.15; letter-spacing: -.01em; text-shadow: 0 -1px 0 rgba(0,0,0,.6); text-wrap: balance; }
+
+/* A pinstriped panel holding a grouped table, as in the app's Settings. */
+.lp-panel {
+  list-style: none; margin: 8px 9px 9px; padding: 0;
+  border: 1px solid var(--group-border); border-radius: 12px;
+  background: #fff; color: #000;
+  /* The pinstripe-grey surround, drawn as a ring so the list stays one box. */
+  box-shadow: 0 0 0 8px #c8cfd6, 0 0 0 9px #14161a;
+  overflow: hidden;
+}
+
+.lp-steps li { display: flex; align-items: flex-start; gap: 14px; padding: 15px 16px; border-top: 1px solid var(--cell-border); font-size: 15px; line-height: 1.45; color: #4d4d4d; }
+.lp-steps li:first-child { border-top: none; }
+.lp-steps strong { display: block; margin-bottom: 2px; color: #000; font-size: 17px; }
+.lp-num {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--ios-gloss-blue); border: 1px solid #1d3f86;
+  color: #fff; font-size: 15px; font-weight: bold; text-shadow: 0 -1px 0 rgba(0,0,0,.4);
+}
+
+.lp-features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.lp-features li {
+  padding: 18px;
+  border: 1px solid #111316; border-radius: 12px;
+  background: linear-gradient(#3b4048, #2b2f35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.09);
+}
+.lp-features strong { display: block; margin: 12px 0 5px; color: #fff; font-size: 17px; }
+.lp-features p { margin: 0; font-size: 15px; line-height: 1.5; color: #b9c2cc; }
+.lp-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 9px; background: var(--ios-gloss-blue); border: 1px solid #14306b; box-shadow: inset 0 1px 0 rgba(255,255,255,.4); }
+.lp-icon svg { width: 22px; height: 22px; fill: #fff; filter: drop-shadow(0 -1px 0 rgba(0,0,0,.35)); }
+
+.lp-faq details { border-top: 1px solid var(--cell-border); }
+.lp-faq details:first-child { border-top: none; }
+.lp-faq summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; font-size: 16px; font-weight: bold; cursor: pointer; list-style: none; }
+.lp-faq summary::-webkit-details-marker { display: none; }
+.lp-faq summary::after { content: ''; flex: 0 0 auto; width: 8px; height: 8px; border-right: 2.6px solid #8c8c8c; border-bottom: 2.6px solid #8c8c8c; transform: rotate(-45deg); transition: transform .15s; }
+.lp-faq details[open] summary::after { transform: rotate(45deg); }
+.lp-faq p { margin: 0; padding: 0 16px 16px; font-size: 15px; line-height: 1.5; color: #4d4d4d; }
+
+.lp-close { text-align: center; }
+.lp-close .lp-actions { justify-content: center; max-width: 460px; margin: 0 auto; }
+
+/* ── Footer ──────────────────────────────────────────────────── */
+
+.lp-foot { padding: 24px 0 calc(36px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(255,255,255,.1); color: #8a939e; font-size: 13px; line-height: 1.5; }
+.lp-foot nav { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-bottom: 12px; }
+.lp-foot a { color: #c9d1db; font-size: 14px; }
+.lp-foot p { margin: 0; max-width: 640px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-faq summary::after { transition: none; }
+}

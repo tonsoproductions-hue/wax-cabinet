@@ -1,4 +1,4 @@
--- Vinyl Crate: owner sign-in.
+-- Vinyl Sleeve: owner sign-in.
 -- Every record belongs to the user who added it. Anyone can browse; only the
 -- owner can add, change or delete their records and cover photos.
 --

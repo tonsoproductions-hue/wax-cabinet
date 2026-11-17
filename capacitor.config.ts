@@ -3,8 +3,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // The iOS app bundles the static export in out/ (npm run build:ios) and calls
 // the API on the web deployment. See docs/LAUNCH.md.
 const config: CapacitorConfig = {
-  appId: 'com.tonsoproductions.vinylcrate',
-  appName: 'Vinyl Crate',
+  appId: 'com.tonsoproductions.vinylsleeve',
+  appName: 'Vinyl Sleeve',
   webDir: 'out',
   ios: {
     // Pages handle the notch themselves (viewport-fit=cover + safe-area CSS).

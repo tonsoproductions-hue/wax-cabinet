@@ -1,15 +1,25 @@
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_THEME, THEMES, THEME_BOOT_SCRIPT } from "@/lib/themes";
+import { LANDING_ENABLED, LANDING_BOOT_SCRIPT } from "@/lib/landing";
 import "./globals.css";
 // One stylesheet per extra look; each only applies under its own
 // [data-theme] attribute. See lib/themes.js.
 import "./themes/wood.css";
+// The public home page around the app (components/Landing.js).
+import "./landing.css";
+
+const TITLE = "Vinyl Sleeve · Snap a record cover, build your collection";
+const DESCRIPTION = "Photograph any record cover and Vinyl Sleeve names it, finds the exact pressing on Discogs and files it in your collection. Free, no barcode needed, works on any phone or computer.";
 
 export const metadata: Metadata = {
-  title: "Vinyl Crate",
-  description: "A vinyl collection registry: photograph a cover, match the pressing on Discogs, file it away.",
+  // Share links and search results need absolute addresses for the icon.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: { title: TITLE, description: DESCRIPTION, siteName: "Vinyl Sleeve", type: "website", images: ["/icon-512.png"] },
+  twitter: { card: "summary", title: TITLE, description: DESCRIPTION, images: ["/icon-512.png"] },
   // Added to the home screen, it opens full screen with a dark status bar.
-  appleWebApp: { capable: true, title: "Vinyl Crate", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Vinyl Sleeve", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
@@ -26,9 +36,12 @@ export default function RootLayout({
   return (
     // The boot script sets data-theme from the saved choice before first
     // paint, so the attribute can differ from what the server rendered.
-    <html lang="en" data-theme={DEFAULT_THEME} suppressHydrationWarning>
+    // data-landing marks the public home page; its boot script drops the mark
+    // for visitors who should get the app instead (lib/landing.js).
+    <html lang="en" data-theme={DEFAULT_THEME} data-landing={LANDING_ENABLED ? "" : undefined} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        {LANDING_ENABLED && <script dangerouslySetInnerHTML={{ __html: LANDING_BOOT_SCRIPT }} />}
       </head>
       <body>{children}</body>
     </html>

@@ -63,7 +63,7 @@ export default function AlbumList({ albums, kind = 'albums', readOnly, initialGe
           ) : (
             <>
               <strong>No Albums</strong>
-              <small>Add a record from the Import tab. Photograph the cover and Vinyl Crate looks up the pressing for you.</small>
+              <small>Add a record from the Import tab. Photograph the cover and Vinyl Sleeve looks up the pressing for you.</small>
             </>
           )}
         </div>
