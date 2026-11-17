@@ -1,8 +1,10 @@
-'use client'
-// The public home page: what Vinyl Sleeve is, shown around the live app.
-// On a computer the real app runs in the device frame beside the copy; on a
-// phone the buttons open it full screen. Styles are in app/landing.css, and
-// lib/landing.js decides who sees this page.
+import Link from 'next/link'
+
+// The website's home page at /: what Vinyl Sleeve is, with links into the app
+// at /app. Styles are in app/landing.css.
+
+// The app shows this collection to signed-out visitors (components/VinylApp.js).
+const FEATURED = !!process.env.NEXT_PUBLIC_FEATURED_OWNER
 
 const STEPS = [
   ['Snap the sleeve', 'Photograph the cover, or type what you remember. Even “the one with the prism on the front” works.'],
@@ -42,8 +44,7 @@ const ICONS = {
   lock: <path d="M12 2a5 5 0 0 1 5 5v3h1.5A1.5 1.5 0 0 1 20 11.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 20.5v-9A1.5 1.5 0 0 1 5.5 10H7V7a5 5 0 0 1 5-5zm0 2.2A2.8 2.8 0 0 0 9.2 7v3h5.6V7A2.8 2.8 0 0 0 12 4.2z" fillRule="evenodd" />,
 }
 
-// A record sliding out of its sleeve; the hero picture where the live app
-// isn't beside the copy (phones and tablets).
+// A record sliding out of its sleeve; the hero picture.
 function SleeveArt() {
   return (
     <svg className="lp-art" viewBox="0 0 300 220" aria-hidden="true">
@@ -73,108 +74,100 @@ function SleeveArt() {
   )
 }
 
-export default function Landing({ active, featured, onSignIn, onDemo, onBrowse, children }) {
+export default function Landing() {
   return (
     <div className="lp-root">
-      {active && (
-        <>
-          <header className="lp-copy lp-top">
-            <span className="lp-brand">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon-192.png" alt="" width="36" height="36" />
-              Vinyl Sleeve
-            </span>
-            <button className="lp-btn small" onClick={onSignIn}>Sign In</button>
-          </header>
+      <header className="lp-top">
+        <span className="lp-brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-192.png" alt="" width="36" height="36" />
+          Vinyl Sleeve
+        </span>
+        <Link className="lp-btn small" href="/app">Open App</Link>
+      </header>
 
-          <section className="lp-copy lp-hero">
-            <SleeveArt />
-            <p className="lp-eyebrow">Your record collection, sorted</p>
-            <h1>Snap the sleeve. Know the record.</h1>
-            <p className="lp-lede">
-              Photograph any record cover and Vinyl Sleeve names it, finds the exact pressing on Discogs and files it in your collection. No barcode needed.
-            </p>
-            <div className="lp-actions">
-              <button className="lp-btn primary" onClick={onSignIn}>Create Free Account</button>
-              <button className="lp-btn" onClick={onDemo}>Try the Demo</button>
-            </div>
-            <p className="lp-note">
-              Free. Nothing to download. Works on any phone or computer.
-              {featured && <> Or <button className="lp-link" onClick={onBrowse}>browse a real collection</button>.</>}
-            </p>
-            <p className="lp-live wide">That phone is the real app, running live. Go on, click around.</p>
-            <p className="lp-live mid">The real app is running just below. Go on, tap around.</p>
-          </section>
-        </>
-      )}
+      <section className="lp-hero">
+        <SleeveArt />
+        <p className="lp-eyebrow">Your record collection, sorted</p>
+        <h1>Snap the sleeve. Know the record.</h1>
+        <p className="lp-lede">
+          Photograph any record cover and Vinyl Sleeve names it, finds the exact pressing on Discogs and files it in your collection. No barcode needed.
+        </p>
+        <div className="lp-actions">
+          <Link className="lp-btn primary" href="/app?signin">Create Free Account</Link>
+          <Link className="lp-btn" href="/app?demo">Try the Demo</Link>
+        </div>
+        <p className="lp-note">
+          Free. Nothing to download. Works on any phone or computer.
+          {' '}Already have an account? <Link className="lp-link" href="/app?signin">Sign in</Link>.
+          {FEATURED && <> Or <Link className="lp-link" href="/app">browse a real collection</Link>.</>}
+        </p>
+      </section>
 
-      <div className="lp-stage">{children}</div>
+      <main className="lp-main">
+        <section>
+          <p className="lp-eyebrow">How it works</p>
+          <h2>Three taps from shelf to screen</h2>
+          <ol className="lp-panel lp-steps">
+            {STEPS.map(([title, text], i) => (
+              <li key={title}>
+                <span className="lp-num" aria-hidden="true">{i + 1}</span>
+                <span><strong>{title}</strong>{text}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-      {active && (
-        <>
-          <main className="lp-copy lp-main">
-            <section>
-              <p className="lp-eyebrow">How it works</p>
-              <h2>Three taps from shelf to screen</h2>
-              <ol className="lp-panel lp-steps">
-                {STEPS.map(([title, text], i) => (
-                  <li key={title}>
-                    <span className="lp-num" aria-hidden="true">{i + 1}</span>
-                    <span><strong>{title}</strong>{text}</span>
-                  </li>
-                ))}
-              </ol>
-            </section>
+        <section>
+          <p className="lp-eyebrow">What you get</p>
+          <h2>Built for people who buy records</h2>
+          <ul className="lp-features">
+            {FEATURES.map(([icon, title, text]) => (
+              <li key={title}>
+                <span className="lp-icon" aria-hidden="true"><svg viewBox="0 0 24 24">{ICONS[icon]}</svg></span>
+                <strong>{title}</strong>
+                <p>{text}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </main>
 
-            <section>
-              <p className="lp-eyebrow">What you get</p>
-              <h2>Built for people who buy records</h2>
-              <ul className="lp-features">
-                {FEATURES.map(([icon, title, text]) => (
-                  <li key={title}>
-                    <span className="lp-icon" aria-hidden="true"><svg viewBox="0 0 24 24">{ICONS[icon]}</svg></span>
-                    <strong>{title}</strong>
-                    <p>{text}</p>
-                  </li>
-                ))}
-              </ul>
-            </section>
+      {/* Beside the page on a computer, after the features on a phone. Each
+          question opens on a tap; opening one closes the one before. */}
+      <aside className="lp-aside" aria-labelledby="lp-faq-title">
+        <p className="lp-eyebrow">Questions</p>
+        <h2 id="lp-faq-title">Good to know</h2>
+        <div className="lp-panel lp-faq">
+          {FAQ.map(([q, a]) => (
+            <details key={q} name="lp-faq">
+              <summary>{q}</summary>
+              <p>{a}</p>
+            </details>
+          ))}
+        </div>
+      </aside>
 
-            <section>
-              <p className="lp-eyebrow">Questions</p>
-              <h2>Good to know</h2>
-              <div className="lp-panel lp-faq">
-                {FAQ.map(([q, a]) => (
-                  <details key={q}>
-                    <summary>{q}</summary>
-                    <p>{a}</p>
-                  </details>
-                ))}
-              </div>
-            </section>
+      <section className="lp-close">
+        <h2>Put your shelf in your pocket</h2>
+        <div className="lp-actions">
+          <Link className="lp-btn primary" href="/app?signin">Create Free Account</Link>
+          <Link className="lp-btn" href="/app">Open the App</Link>
+        </div>
+      </section>
 
-            <section className="lp-close">
-              <h2>Put your shelf in your pocket</h2>
-              <div className="lp-actions">
-                <button className="lp-btn primary" onClick={onSignIn}>Create Free Account</button>
-                <button className="lp-btn" onClick={onDemo}>Try the Demo</button>
-              </div>
-            </section>
-          </main>
-
-          <footer className="lp-copy lp-foot">
-            <nav>
-              <a href="/support/">Support</a>
-              <a href="/privacy/">Privacy</a>
-              <a href="/terms/">Terms</a>
-              <a href="/delete-account/">Delete Your Account</a>
-            </nav>
-            <p>
-              Vinyl Sleeve by Tonso Productions. Covers read by Claude, pressings from Discogs. Discogs and Claude are marks of their respective owners; Vinyl Sleeve is not affiliated with or endorsed by Discogs, Anthropic or Apple.
-            </p>
-          </footer>
-        </>
-      )}
+      <footer className="lp-foot">
+        <nav>
+          <Link href="/app">Open the App</Link>
+          <a href="/support/">Support</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="/terms/">Terms</a>
+          <a href="/delete-account/">Delete Your Account</a>
+        </nav>
+        <p>
+          Vinyl Sleeve by Tonso Productions. Covers read by Claude, pressings from Discogs. Discogs and Claude are marks of their respective owners; Vinyl Sleeve is not affiliated with or endorsed by Discogs, Anthropic or Apple.
+        </p>
+      </footer>
     </div>
   )
 }

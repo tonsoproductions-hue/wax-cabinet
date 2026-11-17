@@ -256,7 +256,7 @@ says so if the model stands by one of them. Prices for cost logging live in
    (copy `wood.css` as a starting point) and import it in `app/layout.tsx`.
 3. Optional: give it its own browse screen. Write a component that takes the
    same props as `components/Nano.js` and `components/Deck.js`, register it in
-   `BROWSERS` in `app/page.js`, and name it in the theme's `browse.screen`.
+   `BROWSERS` in `components/VinylApp.js`, and name it in the theme's `browse.screen`.
 
 The choice is saved on the device (`localStorage`), applied before first
 paint, and appears in Settings → Appearance automatically.

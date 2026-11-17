@@ -6,7 +6,7 @@ import { CoverFlow, click, useSpin } from '@/components/Nano'
 // The Wood Hi-Fi theme's browse screen: a walnut turntable. The record on
 // the platter wears the current album's cover as its label; flip through the
 // sleeves in the crate below it, or turn the brass knob. Takes the same props
-// as Nano (the iPod theme's browse screen) so app/page.js can swap them.
+// as Nano (the iPod theme's browse screen) so components/VinylApp.js can swap them.
 export default function Deck({ albums, index, setIndex, onSelect, onMenu, onShuffle }) {
   // How far the knob has been turned, for its pointer mark.
   const [turn, setTurn] = useState(0)
