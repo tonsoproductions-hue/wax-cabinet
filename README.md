@@ -29,8 +29,8 @@ npm run dev                  # http://localhost:3000  (add ?demo for a sample cr
 
 | Path | |
 |---|---|
-| `app/page.js` | the app shell: tabs, auth state, data loading |
-| `components/Landing.js`, `lib/landing.js`, `app/landing.css` | the public home page signed-out visitors see around the live app |
+| `components/VinylApp.js` | the app shell: tabs, auth state, data loading (`app/app/page.js` on the website, `app/page.js` in the iOS build) |
+| `components/Landing.js`, `lib/landing.js`, `app/landing.css` | the website's home page at `/`; the app itself is `components/VinylApp.js`, at `/app` |
 | `components/` | Albums list, Now Playing, Import, Settings, nano + Cover Flow |
 | `app/api/*/route.server.js` | server routes (left out of the iOS build) |
 | `lib/themes.js`, `app/themes/` | swappable looks (Classic iPod, Wood Hi-Fi); Settings → Appearance |

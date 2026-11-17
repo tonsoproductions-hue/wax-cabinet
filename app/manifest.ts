@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Vinyl Sleeve",
     short_name: "Vinyl Sleeve",
     description: "A vinyl collection registry: photograph a cover, match the pressing on Discogs, file it away.",
-    start_url: "/",
+    start_url: "/app",
     display: "standalone",
     orientation: "portrait",
     background_color: "#000000",

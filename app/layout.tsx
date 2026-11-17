@@ -5,7 +5,7 @@ import "./globals.css";
 // One stylesheet per extra look; each only applies under its own
 // [data-theme] attribute. See lib/themes.js.
 import "./themes/wood.css";
-// The public home page around the app (components/Landing.js).
+// The public home page (components/Landing.js).
 import "./landing.css";
 
 const TITLE = "Vinyl Sleeve · Snap a record cover, build your collection";
@@ -36,9 +36,9 @@ export default function RootLayout({
   return (
     // The boot script sets data-theme from the saved choice before first
     // paint, so the attribute can differ from what the server rendered.
-    // data-landing marks the public home page; its boot script drops the mark
-    // for visitors who should get the app instead (lib/landing.js).
-    <html lang="en" data-theme={DEFAULT_THEME} data-landing={LANDING_ENABLED ? "" : undefined} suppressHydrationWarning>
+    // The landing boot script forwards visits to / that are meant for the app
+    // on to /app (lib/landing.js).
+    <html lang="en" data-theme={DEFAULT_THEME} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         {LANDING_ENABLED && <script dangerouslySetInnerHTML={{ __html: LANDING_BOOT_SCRIPT }} />}
