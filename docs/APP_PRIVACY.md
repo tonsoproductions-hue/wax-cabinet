@@ -4,10 +4,10 @@ This is the owner's checklist for filling in App Store Connect. It is not legal 
 
 ## URLs
 
-- Privacy Policy URL: `https://vinylcrate.vercel.app/privacy/`
-- Support URL: `https://vinylcrate.vercel.app/support/`
-- Terms of Use: `https://vinylcrate.vercel.app/terms/` (link it in the app description or use it as a custom EULA; Apple's standard EULA applies otherwise)
-- Account deletion page: `https://vinylcrate.vercel.app/delete-account/`
+- Privacy Policy URL: `https://vinylsleeve.vercel.app/privacy/`
+- Support URL: `https://vinylsleeve.vercel.app/support/`
+- Terms of Use: `https://vinylsleeve.vercel.app/terms/` (link it in the app description or use it as a custom EULA; Apple's standard EULA applies otherwise)
+- Account deletion page: `https://vinylsleeve.vercel.app/delete-account/`
 
 ## App Privacy ("nutrition label") answers
 

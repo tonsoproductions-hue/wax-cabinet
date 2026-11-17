@@ -1,4 +1,4 @@
--- Vinyl Crate: open the app to many users.
+-- Vinyl Sleeve: open the app to many users.
 -- Run in the Supabase SQL editor after 002_owner_sign_in.sql. Safe to re-run.
 
 -- 1. Profiles: one row per user, created automatically at sign-up.

@@ -1,4 +1,4 @@
--- Vinyl Crate: favorites and a wish list.
+-- Vinyl Sleeve: favorites and a wish list.
 -- Run in the Supabase SQL editor after 003_multi_user.sql. Safe to re-run.
 --
 -- A wish-list record is an ordinary row with wanted = true; "Got It" in the

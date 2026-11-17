@@ -1,16 +1,16 @@
-export const metadata = { title: 'Support · Vinyl Crate' }
+export const metadata = { title: 'Support · Vinyl Sleeve' }
 
 const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL
 
 export default function Support() {
   return (
     <>
-      <h1>Vinyl Crate Support</h1>
+      <h1>Vinyl Sleeve Support</h1>
 
       <h2>Getting started</h2>
       <ol>
         <li>Open Settings (the gear) and choose <em>Sign In or Create Account</em>. Enter your email, then tap the link or type the 6-digit code we send.</li>
-        <li>On the Import tab, choose a photo of a record cover, or type its name (or a description, like “the one with the prism on the front”) and tap <em>Find</em>. Vinyl Crate identifies it and lists matching pressings from Discogs.</li>
+        <li>On the Import tab, choose a photo of a record cover, or type its name (or a description, like “the one with the prism on the front”) and tap <em>Find</em>. Vinyl Sleeve identifies it and lists matching pressings from Discogs.</li>
         <li>Pick your pressing, check the details and tap <em>Add to Collection</em>.</li>
       </ol>
 

@@ -1,4 +1,4 @@
-# Vinyl Crate
+# Vinyl Sleeve
 
 A vinyl collection app with two looks to choose from: an iPhone OS 3 / iPod
 nano skin and a walnut hi-fi with a turntable. Photograph a
@@ -30,6 +30,7 @@ npm run dev                  # http://localhost:3000  (add ?demo for a sample cr
 | Path | |
 |---|---|
 | `app/page.js` | the app shell: tabs, auth state, data loading |
+| `components/Landing.js`, `lib/landing.js`, `app/landing.css` | the public home page signed-out visitors see around the live app |
 | `components/` | Albums list, Now Playing, Import, Settings, nano + Cover Flow |
 | `app/api/*/route.server.js` | server routes (left out of the iOS build) |
 | `lib/themes.js`, `app/themes/` | swappable looks (Classic iPod, Wood Hi-Fi); Settings → Appearance |

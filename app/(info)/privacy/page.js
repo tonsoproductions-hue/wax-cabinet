@@ -1,4 +1,4 @@
-export const metadata = { title: 'Privacy Policy · Vinyl Crate' }
+export const metadata = { title: 'Privacy Policy · Vinyl Sleeve' }
 
 const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL
 
@@ -13,7 +13,7 @@ export default function Privacy() {
       </nav>
 
       <h2>Summary</h2>
-      <p>Vinyl Crate helps you catalogue your vinyl records. It is run by Tonso Productions (“we”). In short:</p>
+      <p>Vinyl Sleeve helps you catalogue your vinyl records. It is run by Tonso Productions (“we”). In short:</p>
       <ul>
         <li>We store your email address and the records, wish-list items and cover photos you add, so the app can work.</li>
         <li>Your collection is public to anyone with your link by default. You can turn that off in Settings.</li>
@@ -92,7 +92,7 @@ export default function Privacy() {
       <p><strong>Cover photos are different.</strong> They live in a public storage bucket, so anyone who has a photo’s web address can open it, even when your collection is private. Please don’t photograph anything private.</p>
 
       <h2>Service providers</h2>
-      <p>We use these companies to run Vinyl Crate:</p>
+      <p>We use these companies to run Vinyl Sleeve:</p>
       <ul>
         <li><strong>Anthropic (Claude API)</strong> reads the cover photo you scan, or the words and optional hint you type, to identify the album. This is sent through our server for that request only. Under Anthropic’s commercial API terms, inputs are not used to train its models. Lookups require you to be signed in.</li>
         <li><strong>Discogs</strong> receives artist and title search terms and release IDs from our server, not your identity, and returns pressings, tracklists, cover images and price suggestions.</li>
@@ -129,7 +129,7 @@ export default function Privacy() {
       <p>Our providers are US-based companies, so your data may be processed in the United States and other countries whose data protection laws may differ from yours.</p>
 
       <h2>Children</h2>
-      <p>Vinyl Crate isn’t directed at children under 13, and we don’t knowingly collect their information. If you believe a child has given us data, email us and we’ll delete it.</p>
+      <p>Vinyl Sleeve isn’t directed at children under 13, and we don’t knowingly collect their information. If you believe a child has given us data, email us and we’ll delete it.</p>
 
       <h2>Changes to this policy</h2>
       <p>If we change this policy, we’ll update the date at the top. If a change is significant, we’ll say what changed at the top of this page.</p>

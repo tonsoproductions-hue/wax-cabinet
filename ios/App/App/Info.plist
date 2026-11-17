@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Vinyl Crate</string>
+	<string>Vinyl Sleeve</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -24,10 +24,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.tonsoproductions.vinylcrate</string>
+			<string>com.tonsoproductions.vinylsleeve</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>vinylcrate</string>
+				<string>vinylsleeve</string>
 			</array>
 		</dict>
 	</array>
@@ -38,11 +38,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Vinyl Crate uses the camera to photograph record covers so it can identify them.</string>
+	<string>Vinyl Sleeve uses the camera to photograph record covers so it can identify them.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Shake your phone to shuffle to a random record.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Vinyl Crate reads the cover photos you choose so it can identify your records.</string>
+	<string>Vinyl Sleeve reads the cover photos you choose so it can identify your records.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
